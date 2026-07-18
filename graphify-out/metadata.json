@@ -1,0 +1,130 @@
+{
+  "projectName": "medgram",
+  "communityLabels": {
+    "0": "Content Workflow",
+    "1": "Community 1",
+    "2": "Community 2",
+    "3": "Community 3",
+    "4": "Compliance Pipeline",
+    "5": "Community 5",
+    "6": "Community 6",
+    "7": "Community 7",
+    "8": "Community 8",
+    "9": "Community 9",
+    "10": "Community 10",
+    "11": "Data Loader UI",
+    "12": "Community 12",
+    "13": "Community 13",
+    "14": "Community 14",
+    "15": "Community 15",
+    "16": "Community 16",
+    "17": "Community 17",
+    "18": "Link Routing",
+    "19": "Community 19",
+    "20": "Database Access",
+    "21": "Health Monitoring",
+    "22": "Metadata Service",
+    "23": "Root Module",
+    "24": "Community 24",
+    "25": "Community 25",
+    "26": "Content Generation",
+    "27": "Data Access Layer",
+    "28": "Content Publishing",
+    "29": "Community 29",
+    "30": "Next.js config",
+    "31": "API & Jobs",
+    "32": "unknown",
+    "33": "unknown",
+    "34": "unknown",
+    "35": "Database ORM",
+    "36": "Database Access",
+    "37": "React UI",
+    "38": "TypeScript Compiler",
+    "39": "Node Runtime",
+    "40": "App Layer",
+    "41": "Community 41",
+    "42": "Concurrency Control",
+    "43": "TypeScript Compiler",
+    "44": "Source Code"
+  },
+  "communitySummaries": {
+    "0": "Manages the lifecycle of content, handling creation, review, scheduling, regeneration, and status updates within a rule\u2011based system.",
+    "1": "",
+    "2": "",
+    "3": "",
+    "4": "Ensures generated content complies with defined rules, assembles the final copy, formats blocker feedback, and supports demos such as agency or doctor messages.",
+    "5": "",
+    "6": "",
+    "7": "",
+    "8": "",
+    "9": "",
+    "10": "",
+    "11": "Handles fetching, caching, and presenting data items with status, errors, warnings, and customizable styles.",
+    "12": "",
+    "13": "",
+    "14": "",
+    "15": "",
+    "16": "",
+    "17": "",
+    "18": "Manages active network links and path selection for routing.",
+    "19": "",
+    "20": "Manages database interactions through an ORM, providing data access and schema migrations.",
+    "21": "Handles availability and health status checks for the application.",
+    "22": "Collects, stores, and exposes descriptive information about data assets for discovery, lineage, and governance purposes.",
+    "23": "Bootstraps and configures the main Angular application, providing top-level services and the root component.",
+    "24": "",
+    "25": "",
+    "26": "This domain manages the process of generating textual or media content, using DTOs like GenerateContentDto to capture and validate user requests.",
+    "27": "Provides a Prisma-based interface for performing database operations.",
+    "28": "Handles creation, editing, and distribution of digital content.",
+    "29": "",
+    "30": "Defines build\u2011time and runtime settings for a Next.js application, such as environment variables, routing, and transpilation options.",
+    "31": "Manages RESTful API requests, orchestrates background job processing, and persists data in PostgreSQL.",
+    "32": "Unable to determine domain due to missing code entities.",
+    "33": "Unable to determine domain due to missing code entities.",
+    "34": "Unable to determine domain due to missing code entities.",
+    "35": "Provides a type\u2011safe interface to perform CRUD operations against a relational database.",
+    "36": "Manages database interactions through an ORM, providing data access and schema migrations.",
+    "37": "Builds interactive user interface components with React and TypeScript.",
+    "38": "It provides optional static typing, transpilation to JavaScript, and tooling support to improve code safety and developer experience.",
+    "39": "Provides type declarations for Node.js core modules, enabling TypeScript to type-check Node runtime APIs.",
+    "40": "Facilitates user interaction by coordinating requests to use case services and returning responses.",
+    "41": "",
+    "42": "Ensures that multiple processes or threads execute in parallel without conflict, handling synchronization, resource sharing, and scheduling.",
+    "43": "It provides optional static typing, transpilation to JavaScript, and tooling support to improve code safety and developer experience.",
+    "44": "All core application logic for the system is organized within the src directory."
+  },
+  "communityLinks": {
+    "4": {
+      "2": 1
+    },
+    "2": {
+      "6": 1,
+      "4": 4,
+      "12": 1,
+      "14": 1,
+      "5": 1
+    },
+    "6": {
+      "2": 2
+    },
+    "12": {
+      "4": 1
+    },
+    "14": {},
+    "5": {
+      "2": 1
+    },
+    "16": {
+      "2": 1
+    },
+    "11": {
+      "0": 1
+    },
+    "0": {},
+    "7": {
+      "3": 3
+    },
+    "3": {}
+  }
+}

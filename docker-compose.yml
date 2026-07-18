@@ -1,0 +1,67 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: medgram-postgres
+    environment:
+      POSTGRES_USER: medgram
+      POSTGRES_PASSWORD: medgram
+      POSTGRES_DB: medgram
+    ports:
+      # 5434 en el host: el 5432 lo ocupa un PostgreSQL nativo de Windows y el 5433 un relay de WSL
+      - "5434:5432"
+    volumes:
+      - medgram_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medgram -d medgram"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: medgram-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - medgram_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    container_name: medgram-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Dentro de la red de docker se llega a los servicios por su nombre.
+      DATABASE_URL: postgresql://medgram:medgram@postgres:5432/medgram
+      REDIS_URL: redis://redis:6379
+      API_PORT: 3001
+      # Opcional: pásalos con `docker compose up` para generación real / email.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      NOTIFY_DOCTOR_EMAIL: ${NOTIFY_DOCTOR_EMAIL:-}
+    ports:
+      - "3001:3001"
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/dashboard.Dockerfile
+    container_name: medgram-dashboard
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+volumes:
+  medgram_pgdata:
+  medgram_redisdata:

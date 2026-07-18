@@ -1,0 +1,21 @@
+# Dependencias
+node_modules/
+
+# Entorno
+.env
+.env.local
+.env.*.local
+
+# Builds
+dist/
+.next/
+out/
+build/
+
+# Logs y coverage
+*.log
+coverage/
+
+# IDE / SO
+.DS_Store
+Thumbs.db

@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  doctor_approver
+  agency_admin
+}
+
+enum ContentType {
+  post
+  carousel
+  reel
+  ad_creative
+}
+
+enum ContentStatus {
+  draft
+  pending_approval
+  approved
+  rejected
+  needs_changes
+  scheduled
+  published
+}
+
+enum ComplianceSeverity {
+  blocker
+  warning
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      UserRole
+  createdAt DateTime @default(now()) @map("created_at")
+
+  approvedContent ContentItem[]      @relation("ApprovedBy")
+  statusChanges   ContentStatusLog[]
+
+  @@map("users")
+}
+
+model ContentItem {
+  id              String        @id @default(uuid())
+  type            ContentType
+  status          ContentStatus @default(draft)
+  topic           String
+  generatedCopy   String?       @map("generated_copy")
+  generatedMedia  Json          @default("[]") @map("generated_media")
+  complianceFlags String[]      @default([]) @map("compliance_flags")
+  doctorComments  String?       @map("doctor_comments")
+  approvedById    String?       @map("approved_by")
+  approvedBy      User?         @relation("ApprovedBy", fields: [approvedById], references: [id])
+  approvedAt      DateTime?     @map("approved_at")
+  scheduledFor    DateTime?     @map("scheduled_for")
+  publishedAt     DateTime?     @map("published_at")
+  igMediaId       String?       @map("ig_media_id")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  complianceChecks ComplianceCheck[]
+  statusLog        ContentStatusLog[]
+
+  @@index([status])
+  @@map("content_items")
+}
+
+model ComplianceCheck {
+  id            String             @id @default(uuid())
+  contentItemId String             @map("content_item_id")
+  contentItem   ContentItem        @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  // id de regla definido en @medgram/shared-types; fuente de verdad: docs/COMPLIANCE.md
+  rule          String
+  severity      ComplianceSeverity
+  passed        Boolean
+  detail        String?
+  checkedAt     DateTime           @default(now()) @map("checked_at")
+
+  @@index([contentItemId])
+  @@map("compliance_checks")
+}
+
+// Auditoría inmutable: solo INSERT desde la app; nunca UPDATE ni DELETE.
+// onDelete: Restrict impide borrar un content_item que ya tiene historial.
+model ContentStatusLog {
+  id            String         @id @default(uuid())
+  contentItemId String         @map("content_item_id")
+  contentItem   ContentItem    @relation(fields: [contentItemId], references: [id], onDelete: Restrict)
+  fromStatus    ContentStatus? @map("from_status")
+  toStatus      ContentStatus  @map("to_status")
+  changedById   String?        @map("changed_by")
+  changedBy     User?          @relation(fields: [changedById], references: [id])
+  // "system:pipeline" | "system:scheduler" | email del usuario que ejecutó la acción
+  actor         String
+  reason        String?
+  createdAt    DateTime       @default(now()) @map("created_at")
+
+  @@index([contentItemId])
+  @@map("content_status_log")
+}

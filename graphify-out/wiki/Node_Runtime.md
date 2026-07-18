@@ -1,0 +1,25 @@
+# Node Runtime
+
+> 1 nodes · cohesion 1.00
+
+## Key Concepts
+
+- [@types/node](file:///C:/Users/rlira/Desktop/Rorro/Programacion/medgram/apps/api/package.json#L24) (0 connections)
+
+## Relationships
+
+- No strong cross-community connections detected
+
+## Source Files
+
+- [apps/api/package.json](file:///C:/Users/rlira/Desktop/Rorro/Programacion/medgram/apps/api/package.json)
+
+## Audit Trail
+
+- EXTRACTED: 0 (0%)
+- INFERRED: 0 (0%)
+- AMBIGUOUS: 0 (0%)
+
+---
+
+*Part of the graphify knowledge wiki. See [[index]] to navigate.*

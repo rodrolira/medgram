@@ -1,0 +1,28 @@
+{
+  "name": "medgram",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plataforma de marketing médico para Instagram con gate de aprobación del doctor",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f",
+    "dev": "npm run build:packages && concurrently -n api,dashboard -c blue,magenta \"npm:dev:api\" \"npm:dev:dashboard\"",
+    "dev:api": "npm run dev --workspace @medgram/api",
+    "dev:dashboard": "npm run dev --workspace @medgram/dashboard",
+    "build:packages": "npm run build --workspace @medgram/shared-types && npm run build --workspace @medgram/content-pipeline",
+    "build": "npm run build:packages && npm run build --workspace @medgram/api && npm run build --workspace @medgram/dashboard",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "npm run test:e2e --workspace @medgram/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

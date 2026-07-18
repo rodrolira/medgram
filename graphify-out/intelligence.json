@@ -1,0 +1,36 @@
+{
+  "hotspots": [
+    {
+      "label": "ContentService",
+      "risk": 0.633,
+      "type": "CLASS"
+    },
+    {
+      "label": "CalendarPage()",
+      "risk": 0.466,
+      "type": "FUNCTION"
+    },
+    {
+      "label": "GeneratePage()",
+      "risk": 0.454,
+      "type": "FUNCTION"
+    },
+    {
+      "label": "createDemo()",
+      "risk": 0.37,
+      "type": "FUNCTION"
+    },
+    {
+      "label": "NotificationService",
+      "risk": 0.241,
+      "type": "CLASS"
+    }
+  ],
+  "blast_radius": {
+    "ContentService": 18,
+    "ContentController": 12,
+    "Gate de Aprobaci\u00f3n Obligatorio del Doctor": 9,
+    "runGenerationPipeline()": 8,
+    "generateCopy()": 7
+  }
+}

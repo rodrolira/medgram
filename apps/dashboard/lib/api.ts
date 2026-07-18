@@ -1,0 +1,165 @@
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+
+// Fase 1 sin auth real: el actor se identifica con el header x-user-email según el rol elegido.
+const FALLBACK_EMAIL = 'doctor@medgram.local';
+
+export interface ComplianceCheck {
+  id: string;
+  rule: string;
+  severity: 'blocker' | 'warning';
+  passed: boolean;
+  detail: string | null;
+}
+
+export interface StatusLogEntry {
+  id: string;
+  fromStatus: string | null;
+  toStatus: string;
+  actor: string;
+  reason: string | null;
+  createdAt: string;
+}
+
+export interface ContentItem {
+  id: string;
+  type: 'post' | 'carousel' | 'reel' | 'ad_creative';
+  status: string;
+  topic: string;
+  generatedCopy: string | null;
+  complianceFlags: string[];
+  doctorComments: string | null;
+  approvedAt: string | null;
+  scheduledFor: string | null;
+  publishedAt: string | null;
+  igMediaId: string | null;
+  createdAt: string;
+  complianceChecks?: ComplianceCheck[];
+  statusLog?: StatusLogEntry[];
+}
+
+export const TYPE_LABELS: Record<ContentItem['type'], string> = {
+  post: 'Post',
+  carousel: 'Carrusel',
+  reel: 'Reel',
+  ad_creative: 'Anuncio',
+};
+
+export const STATUS_LABELS: Record<string, string> = {
+  draft: 'Borrador',
+  pending_approval: 'Pendiente de aprobación',
+  approved: 'Aprobado',
+  rejected: 'Rechazado',
+  needs_changes: 'Cambios solicitados',
+  scheduled: 'Programado',
+  published: 'Publicado',
+};
+
+export const RULE_LABELS: Record<string, string> = {
+  NO_PERSONAL_ATTRIBUTES: 'Sin atributos personales (2ª persona + condición)',
+  NO_DIAGNOSTIC_LANGUAGE: 'Sin lenguaje diagnóstico',
+  NO_GUARANTEED_CLAIMS: 'Sin promesas garantizadas',
+  NO_BEFORE_AFTER: 'Sin antes/después',
+  NO_REMOTE_DIAGNOSIS: 'Sin diagnóstico a distancia',
+  NO_MISLEADING_TESTIMONIALS: 'Sin testimonios engañosos',
+  NO_FEAR_URGENCY: 'Sin miedo ni urgencia artificial',
+  REQUIRED_EDUCATIONAL_DISCLAIMER: 'Disclaimer educativo presente',
+};
+
+async function handle<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const msg = body?.message
+      ? Array.isArray(body.message)
+        ? body.message.join(', ')
+        : body.message
+      : `Error ${res.status}`;
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+export function getPending(): Promise<ContentItem[]> {
+  return fetch(`${API_URL}/content/pending-approval`, { cache: 'no-store' }).then((r) =>
+    handle<ContentItem[]>(r),
+  );
+}
+
+export function getByStatus(status: string): Promise<ContentItem[]> {
+  return fetch(`${API_URL}/content?status=${encodeURIComponent(status)}`, {
+    cache: 'no-store',
+  }).then((r) => handle<ContentItem[]>(r));
+}
+
+export function getContent(id: string): Promise<ContentItem> {
+  return fetch(`${API_URL}/content/${id}`, { cache: 'no-store' }).then((r) =>
+    handle<ContentItem>(r),
+  );
+}
+
+export type ReviewAction = 'approve' | 'reject' | 'request-changes';
+
+export function review(
+  id: string,
+  action: ReviewAction,
+  body: Record<string, string>,
+  actorEmail: string = FALLBACK_EMAIL,
+): Promise<ContentItem> {
+  return fetch(`${API_URL}/content/${id}/${action}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', 'x-user-email': actorEmail },
+    body: JSON.stringify(body),
+  }).then((r) => handle<ContentItem>(r));
+}
+
+export interface GenerateResult {
+  item: ContentItem;
+  pipeline: {
+    attempts: number;
+    source: 'claude' | 'stub';
+    passedGate: boolean;
+    status: string;
+  };
+}
+
+export function generateContent(
+  topic: string,
+  type: ContentItem['type'],
+  actorEmail: string = FALLBACK_EMAIL,
+): Promise<GenerateResult> {
+  return fetch(`${API_URL}/content/generate`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-user-email': actorEmail },
+    body: JSON.stringify({ topic, type }),
+  }).then((r) => handle<GenerateResult>(r));
+}
+
+export function regenerateContent(
+  id: string,
+  actorEmail: string = FALLBACK_EMAIL,
+): Promise<GenerateResult> {
+  return fetch(`${API_URL}/content/${id}/regenerate`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-user-email': actorEmail },
+  }).then((r) => handle<GenerateResult>(r));
+}
+
+export function scheduleContent(
+  id: string,
+  scheduledFor: string | undefined,
+  actorEmail: string = FALLBACK_EMAIL,
+): Promise<ContentItem> {
+  return fetch(`${API_URL}/content/${id}/schedule`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-user-email': actorEmail },
+    body: JSON.stringify(scheduledFor ? { scheduledFor } : {}),
+  }).then((r) => handle<ContentItem>(r));
+}
+
+export function formatDate(iso: string): string {
+  return new Date(iso).toLocaleString('es-CL', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
