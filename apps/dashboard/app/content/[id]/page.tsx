@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -166,14 +167,27 @@ export default function ContentDetailPage() {
               </span>
               <span className="text-sm font-semibold">dr.medgram</span>
             </div>
-            <div className="flex aspect-square items-center justify-center bg-linear-to-br from-slate-100 to-slate-200 text-slate-400">
-              <div className="text-center">
-                <div className="text-3xl">{item.type === 'reel' ? '▶' : '🖼'}</div>
-                <div className="mt-1 text-xs">
-                  {TYPE_LABELS[item.type]} — media pendiente (Fase 1: solo copy)
+            {item.generatedMedia?.[0]?.url ? (
+              <div className="relative aspect-square w-full overflow-hidden">
+                <Image
+                  src={item.generatedMedia[0].url}
+                  alt={item.topic}
+                  fill
+                  className="object-cover"
+                  unoptimized={item.generatedMedia[0].source === 'pollinations'}
+                />
+                <span className="absolute bottom-1 right-2 rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white">
+                  {item.generatedMedia[0].source}
+                </span>
+              </div>
+            ) : (
+              <div className="flex aspect-square items-center justify-center bg-linear-to-br from-slate-100 to-slate-200 text-slate-400">
+                <div className="text-center">
+                  <div className="text-3xl">{item.type === 'reel' ? '▶' : '🖼'}</div>
+                  <div className="mt-1 text-xs">Imagen generándose…</div>
                 </div>
               </div>
-            </div>
+            )}
             <div className="px-3 py-2 text-lg tracking-wide text-slate-700">♡&ensp;💬&ensp;↗</div>
             <div className="px-3 pb-4 text-sm leading-relaxed">
               <span className="font-semibold">dr.medgram</span>{' '}

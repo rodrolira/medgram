@@ -20,6 +20,12 @@ export interface StatusLogEntry {
   createdAt: string;
 }
 
+export interface GeneratedMedia {
+  url: string;
+  source: 'huggingface' | 'pollinations' | string;
+  prompt?: string;
+}
+
 export interface ContentItem {
   id: string;
   type: 'post' | 'carousel' | 'reel' | 'ad_creative';
@@ -33,6 +39,7 @@ export interface ContentItem {
   publishedAt: string | null;
   igMediaId: string | null;
   createdAt: string;
+  generatedMedia?: GeneratedMedia[] | null;
   complianceChecks?: ComplianceCheck[];
   statusLog?: StatusLogEntry[];
 }
@@ -153,6 +160,29 @@ export function scheduleContent(
     headers: { 'content-type': 'application/json', 'x-user-email': actorEmail },
     body: JSON.stringify(scheduledFor ? { scheduledFor } : {}),
   }).then((r) => handle<ContentItem>(r));
+}
+
+export interface DailyGenerationItem {
+  id: string;
+  topic: string;
+  slot: number;
+  status: string;
+}
+
+export interface DailyGenerationResult {
+  date: string;
+  generated: number;
+  pending: number;
+  drafts: number;
+  items: DailyGenerationItem[];
+}
+
+export function triggerDailyGeneration(date?: string): Promise<DailyGenerationResult> {
+  return fetch(`${API_URL}/scheduler/trigger-daily`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(date ? { date } : {}),
+  }).then((r) => handle<DailyGenerationResult>(r));
 }
 
 export function formatDate(iso: string): string {

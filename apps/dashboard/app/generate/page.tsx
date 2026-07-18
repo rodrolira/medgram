@@ -9,10 +9,11 @@ import { useRole } from '@/lib/session';
 const TYPES: ContentItem['type'][] = ['post', 'carousel', 'reel', 'ad_creative'];
 
 const SUGGESTIONS = [
-  '10 tips de higiene dental',
-  'Mitos y verdades sobre la hidratación',
-  '5 hábitos para cuidar el corazón',
-  'Qué es la presión arterial y cómo se controla',
+  'Artritis reumatoide: síntomas tempranos a vigilar',
+  'Lupus eritematoso: calidad de vida y manejo del estrés',
+  'Osteoartritis: prevención con ejercicio y nutrición',
+  'Espondilitis anquilosante: importancia del diagnóstico temprano',
+  'Bienestar articular: hábitos diarios para tus articulaciones',
 ];
 
 export default function GeneratePage() {
