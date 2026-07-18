@@ -185,6 +185,14 @@ export function triggerDailyGeneration(date?: string): Promise<DailyGenerationRe
   }).then((r) => handle<DailyGenerationResult>(r));
 }
 
+export function getCalendarItems(): Promise<ContentItem[]> {
+  return Promise.all([
+    getByStatus('approved'),
+    getByStatus('scheduled'),
+    getByStatus('published'),
+  ]).then((groups) => groups.flat());
+}
+
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleString('es-CL', {
     day: '2-digit',
