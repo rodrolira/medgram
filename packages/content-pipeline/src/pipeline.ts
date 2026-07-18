@@ -1,6 +1,7 @@
 import {
   ComplianceCheckResult,
   ContentType,
+  RheumaCondition,
   hasBlockerFailures,
   runComplianceChecks,
 } from '@medgram/shared-types';
@@ -27,6 +28,8 @@ export interface PipelineOptions {
   log?: (message: string) => void;
   /** Feedback para el primer intento (p.ej. el comentario del doctor al pedir cambios). */
   initialFeedback?: string;
+  /** Rheumatology condition for targeted hashtag pool injection. */
+  condition?: RheumaCondition;
 }
 
 export function composeFullCopy(copy: GeneratedCopy): string {
@@ -68,6 +71,7 @@ export async function runGenerationPipeline(
       apiKey: opts.apiKey,
       feedback,
       log,
+      condition: opts.condition,
     });
     const fullCopy = composeFullCopy(last);
     results = runComplianceChecks(fullCopy);

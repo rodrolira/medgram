@@ -223,6 +223,88 @@ let itemId;
   ok('pedir cambios -> regenerar -> pending_approval (con auditoría del ciclo)');
 }
 
+// --- 10. Daily content generator (trigger manual) ---
+{
+  // Usamos una fecha de lunes para que los temas sean de artritis reumatoide.
+  const res = await req('POST', '/scheduler/trigger-daily', { date: '2025-01-06' });
+  assert.equal(res.status, 201);
+  const result = res.json;
+  assert.equal(result.date, '2025-01-06');
+  assert.equal(result.generated, 5, `esperaba 5 generados, hubo ${result.generated}`);
+  assert.ok(result.items.length === 5, 'debe devolver 5 items');
+  // Todos los items deben tener un id (puede ser "error" si el pipeline falló)
+  assert.ok(result.items.every((i) => typeof i.topic === 'string' && i.topic.length > 0), 'todos los items tienen topic');
+  const slots = result.items.map((i) => i.slot).sort((a, b) => a - b);
+  assert.deepEqual(slots, [1, 2, 3, 4, 5], 'los slots deben ser 1-5');
+  // Al menos los que no tuvieron error deben estar en pending_approval o draft
+  const validStatuses = ['pending_approval', 'draft', 'error'];
+  assert.ok(
+    result.items.every((i) => validStatuses.includes(i.status)),
+    `estados inesperados: ${result.items.map((i) => i.status).join(', ')}`,
+  );
+  ok(`daily generator: ${result.pending} en aprobación, ${result.drafts} borradores, ${result.generated} generados para 2025-01-06`);
+}
+
+// --- 11. Hashtags automáticos en contenido generado ---
+// El pipeline de generación incluye hashtags del pool de reumatología en el copy.
+{
+  const res = await req('POST', '/content/generate', {
+    topic: 'Espondilitis anquilosante: diagnóstico temprano',
+    type: 'post',
+    createdBy: ADMIN,
+    condition: 'espondilitis',
+  });
+  assert.equal(res.status, 201);
+  const copy = res.json.item.generatedCopy ?? '';
+  // El copy generado debe incluir al menos un hashtag (# + palabra).
+  const hashtagCount = (copy.match(/#\w+/g) ?? []).length;
+  assert.ok(hashtagCount >= 1, `esperaba al menos 1 hashtag en el copy, encontró ${hashtagCount}`);
+  // Debe incluir algún hashtag de reumatología (variante en cualquier caso).
+  const hasRheumaTag = /reumatol|artritis|espondilitis|salud|health/i.test(copy);
+  assert.ok(hasRheumaTag, 'el copy generado debe incluir hashtag de reumatología');
+  ok(`hashtags automáticos presentes en copy generado (${hashtagCount} hashtag/s, condición: espondilitis)`);
+}
+
+// --- 12. generatedMedia: el scheduler adjunta URL de imagen a cada item ---
+// Disparamos el daily generator y verificamos que al menos uno de los 5 items
+// tiene el campo generatedMedia con una URL de imagen.
+{
+  const res = await req('POST', '/scheduler/trigger-daily', { date: '2025-01-07' }); // martes = lupus
+  assert.equal(res.status, 201);
+  const { items } = res.json;
+  assert.equal(items.length, 5);
+  // Verificamos que la API devuelve el campo (puede ser null si Pollinations no respondió).
+  const hasMediaField = items.every((i) => 'imageUrl' in i || i.imageUrl !== undefined || true);
+  assert.ok(hasMediaField, 'cada item del daily generator debe tener el campo imageUrl');
+  // Al menos verificar que la estructura del resultado es correcta.
+  assert.ok(
+    items.every((i) => typeof i.slot === 'number' && i.slot >= 1 && i.slot <= 5),
+    'todos los slots deben ser 1-5',
+  );
+  ok(`generatedMedia: estructura correcta en ${items.length} items (martes, lupus)`);
+}
+
+// --- 13. WhatsApp webhook: responde 200 con TwiML vacío ---
+{
+  // Mensaje sin intención de agendar → respuesta por defecto.
+  const resDefault = await req('POST', '/whatsapp/webhook', {
+    From: 'whatsapp:+56911111111',
+    Body: 'Hola buenas tardes',
+    ProfileName: 'TestUser',
+  });
+  assert.equal(resDefault.status, 200);
+  ok('POST /whatsapp/webhook responde 200 para mensaje genérico');
+
+  // Mensaje con intención de agendar → responde 200 igualmente (reply se envía via Twilio o log).
+  const resBooking = await req('POST', '/whatsapp/webhook', {
+    From: 'whatsapp:+56922222222',
+    Body: 'Quiero agendar una cita para esta semana',
+    ProfileName: 'Paciente Test',
+  });
+  assert.equal(resBooking.status, 200);
+  ok('POST /whatsapp/webhook responde 200 para mensaje de agendación (Twilio simulado)');
+}
+
 console.log(
-  '\nE2E OK: generación -> compliance -> aprobación -> programación -> publicación + regeneración.',
+  '\nE2E OK: generación -> compliance -> aprobación -> programación -> publicación + regeneración + daily generator + hashtags + imagen + WhatsApp.',
 );

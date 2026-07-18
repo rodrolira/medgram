@@ -16,3 +16,4 @@ export const USER_ROLES = ['doctor_approver', 'agency_admin'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
 export * from './compliance';
+export * from './topics';

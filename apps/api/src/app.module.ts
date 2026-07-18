@@ -4,6 +4,8 @@ import { ContentModule } from './content/content.module';
 import { HealthController } from './health.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { PublishingModule } from './publishing/publishing.module';
+import { SchedulerModule } from './scheduler/scheduler.module';
+import { WhatsAppModule } from './whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -11,6 +13,8 @@ import { PublishingModule } from './publishing/publishing.module';
     PrismaModule,
     ContentModule,
     PublishingModule,
+    SchedulerModule,
+    WhatsAppModule,
   ],
   controllers: [HealthController],
 })

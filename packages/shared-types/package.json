@@ -8,7 +8,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -w -p tsconfig.json",
-    "test": "npm run build && node --test test/compliance.test.mjs"
+    "test": "npm run build && node --test test/compliance.test.mjs test/topics.test.mjs"
   },
   "devDependencies": {
     "typescript": "^5.6.0"

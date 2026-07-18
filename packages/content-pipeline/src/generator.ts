@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { COMPLIANCE_RULES, ContentType } from '@medgram/shared-types';
+import { COMPLIANCE_RULES, ContentType, RHEUMATOLOGY_HASHTAG_POOL, RheumaCondition } from '@medgram/shared-types';
 
 // Regla de la skill claude-api: default claude-opus-4-8 salvo que se pida otro modelo.
 // Configurable por si se quiere bajar a sonnet/haiku por costo (decisión del usuario).
@@ -43,8 +43,34 @@ Devuelve EXCLUSIVAMENTE un objeto JSON válido, sin texto adicional ni bloques d
 Incluye entre 5 y 8 hashtags relevantes y sobrios, sin promesas.`;
 }
 
-function buildUserPrompt(topic: string, type: ContentType, feedback?: string): string {
+/**
+ * Builds a curated hashtag suggestion from the pool for a given condition.
+ * Returns: 1 general + 2-3 condition-specific + 2 educational + 1 geographic = 6-7 tags.
+ * Claude is instructed to use these as a base and can add/remove as needed.
+ */
+export function buildHashtagSuggestions(condition?: RheumaCondition): string[] {
+  const general = [RHEUMATOLOGY_HASHTAG_POOL.general[0]];
+  const conditionTags = condition
+    ? [...RHEUMATOLOGY_HASHTAG_POOL.by_condition[condition]].slice(0, 3)
+    : [];
+  const educational = RHEUMATOLOGY_HASHTAG_POOL.educational.slice(0, 2);
+  const geographic = [RHEUMATOLOGY_HASHTAG_POOL.geographic[0]];
+  return [...general, ...conditionTags, ...educational, ...geographic];
+}
+
+function buildUserPrompt(
+  topic: string,
+  type: ContentType,
+  feedback?: string,
+  condition?: RheumaCondition,
+): string {
   let prompt = `Tema: "${topic}"\nFormato: ${TYPE_GUIDANCE[type]}`;
+
+  if (condition) {
+    const suggestedTags = buildHashtagSuggestions(condition).join(' ');
+    prompt += `\nHashtags sugeridos (base mínima — puedes añadir más, no quitar los de reumatología): ${suggestedTags}`;
+  }
+
   if (feedback) {
     prompt +=
       `\n\nTen en cuenta esta retroalimentación (del validador de compliance o del doctor) para ` +
@@ -59,7 +85,11 @@ function buildUserPrompt(topic: string, type: ContentType, feedback?: string): s
  * (pasa todos los blockers e incluye el disclaimer educativo) para que el sistema
  * sea demostrable y testeable end-to-end sin depender de la API.
  */
-export function stubCopy(topic: string, type: ContentType): GeneratedCopy {
+export function stubCopy(
+  topic: string,
+  type: ContentType,
+  condition?: RheumaCondition,
+): GeneratedCopy {
   void type;
   const caption =
     `${topic}: información general.\n\n` +
@@ -67,13 +97,9 @@ export function stubCopy(topic: string, type: ContentType): GeneratedCopy {
     `Según fuentes como la OMS y el MINSAL, informarse con fuentes confiables es clave. ` +
     `Este contenido es informativo y no reemplaza una consulta médica. ` +
     `Agenda tu control con un profesional de la salud.`;
-  const hashtags = [
-    '#SaludGeneral',
-    '#Bienestar',
-    '#MedicinaPreventiva',
-    '#SaludChile',
-    '#EducacionEnSalud',
-  ];
+  const hashtags = condition
+    ? buildHashtagSuggestions(condition)
+    : ['#SaludGeneral', '#Bienestar', '#MedicinaPreventiva', '#SaludChile', '#EducacionEnSalud'];
   return { caption, hashtags, source: 'stub' };
 }
 
@@ -102,6 +128,8 @@ export interface GenerateOptions {
   /** Motivo del rechazo anterior, para que el modelo corrija en el reintento. */
   feedback?: string;
   log?: (message: string) => void;
+  /** Rheumatology condition for targeted hashtag pool injection. */
+  condition?: RheumaCondition;
 }
 
 /**
@@ -119,7 +147,7 @@ export async function generateCopy(
   const apiKey = opts.apiKey ?? process.env.ANTHROPIC_API_KEY;
   const log = opts.log ?? (() => undefined);
   if (!apiKey) {
-    return stubCopy(topic, type);
+    return stubCopy(topic, type, opts.condition);
   }
 
   const client = new Anthropic({ apiKey, maxRetries: 3 });
@@ -128,12 +156,12 @@ export async function generateCopy(
       model: opts.model ?? DEFAULT_MODEL,
       max_tokens: 2000,
       system: buildSystemPrompt(),
-      messages: [{ role: 'user', content: buildUserPrompt(topic, type, opts.feedback) }],
+      messages: [{ role: 'user', content: buildUserPrompt(topic, type, opts.feedback, opts.condition) }],
     });
 
     if (response.stop_reason === 'refusal') {
       log('[generator] Claude rechazó la solicitud (refusal); usando plantilla de respaldo');
-      return stubCopy(topic, type);
+      return stubCopy(topic, type, opts.condition);
     }
 
     const textBlock = response.content.find((b) => b.type === 'text');
@@ -141,7 +169,7 @@ export async function generateCopy(
     const parsed = parseCopy(raw);
     if (!parsed.caption.trim()) {
       log('[generator] respuesta vacía de Claude; usando plantilla de respaldo');
-      return stubCopy(topic, type);
+      return stubCopy(topic, type, opts.condition);
     }
     return { ...parsed, source: 'claude' };
   } catch (e) {
@@ -150,6 +178,6 @@ export async function generateCopy(
     log(
       `[generator] fallo llamando a Claude: ${(e as Error).message}; usando plantilla de respaldo`,
     );
-    return stubCopy(topic, type);
+    return stubCopy(topic, type, opts.condition);
   }
 }

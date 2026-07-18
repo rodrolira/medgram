@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ContentItem, ContentStatus, ContentType, Prisma, User } from '@prisma/client';
-import { hasBlockerFailures, runComplianceChecks } from '@medgram/shared-types';
+import { hasBlockerFailures, RheumaCondition, runComplianceChecks } from '@medgram/shared-types';
 import { runGenerationPipeline } from '@medgram/content-pipeline';
 import { NotificationService } from '../notifications/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -29,9 +29,10 @@ export class ContentService {
    * crea el borrador y corre el chequeo automático (que lo promueve a pending_approval
    * si pasa el gate, o lo deja en draft para revisión manual si no).
    */
-  async generateAndQueue(topic: string, type: ContentType, createdBy?: string) {
+  async generateAndQueue(topic: string, type: ContentType, createdBy?: string, condition?: RheumaCondition) {
     const result = await runGenerationPipeline(topic, type, {
       log: (m) => this.logger.log(m),
+      condition,
     });
 
     const item = await this.create({
@@ -281,6 +282,14 @@ export class ContentService {
       ),
     );
     return this.findOne(id);
+  }
+
+  /** Sets generated media (images/videos) on a content item without changing its status. */
+  async setMedia(id: string, media: Array<{ url: string; source: string; prompt: string }>) {
+    await this.prisma.contentItem.update({
+      where: { id },
+      data: { generatedMedia: media },
+    });
   }
 
   /** Deja rastro de un fallo de publicación sin cambiar el estado (la cola reintenta). */
