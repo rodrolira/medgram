@@ -87,6 +87,30 @@ model ComplianceCheck {
   @@map("compliance_checks")
 }
 
+enum BookingStatus {
+  confirmed
+  cancelled
+  completed
+}
+
+model Booking {
+  id                    String        @id @default(uuid())
+  patientPhone          String        @map("patient_phone")
+  patientName           String?       @map("patient_name")
+  scheduledFor          DateTime      @map("scheduled_for")
+  durationMinutes       Int           @default(30) @map("duration_minutes")
+  status                BookingStatus @default(confirmed)
+  source                String        @default("whatsapp")
+  notes                 String?
+  googleCalendarEventId String?       @map("google_calendar_event_id")
+  reminderSent          Boolean       @default(false) @map("reminder_sent")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  @@index([scheduledFor])
+  @@map("bookings")
+}
+
 // Auditoría inmutable: solo INSERT desde la app; nunca UPDATE ni DELETE.
 // onDelete: Restrict impide borrar un content_item que ya tiene historial.
 model ContentStatusLog {

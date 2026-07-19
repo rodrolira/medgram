@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { CalendarModule } from './calendar/calendar.module';
 import { ContentModule } from './content/content.module';
 import { HealthController } from './health.controller';
 import { PrismaModule } from './prisma/prisma.module';
@@ -15,6 +16,7 @@ import { WhatsAppModule } from './whatsapp/whatsapp.module';
     PublishingModule,
     SchedulerModule,
     WhatsAppModule,
+    CalendarModule,
   ],
   controllers: [HealthController],
 })
