@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { CalendarModule } from './calendar/calendar.module';
 import { ContentModule } from './content/content.module';
 import { HealthController } from './health.controller';
+import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PublishingModule } from './publishing/publishing.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
@@ -17,6 +18,7 @@ import { WhatsAppModule } from './whatsapp/whatsapp.module';
     SchedulerModule,
     WhatsAppModule,
     CalendarModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
 })
