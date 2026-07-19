@@ -19,6 +19,8 @@ export interface PipelineResult {
   /** true si el copy final pasó el gate (sin violaciones blocker). */
   passedGate: boolean;
   complianceResults: ComplianceCheckResult[];
+  /** Guión para reels (escenas con tiempos). Solo presente cuando type === 'reel'. */
+  reelScript?: string;
 }
 
 export interface PipelineOptions {
@@ -88,6 +90,7 @@ export async function runGenerationPipeline(
         attempts,
         passedGate: true,
         complianceResults: results,
+        reelScript: last.reelScript,
       };
     }
 

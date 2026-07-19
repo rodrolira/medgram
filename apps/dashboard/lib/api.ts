@@ -201,3 +201,81 @@ export function formatDate(iso: string): string {
     minute: '2-digit',
   });
 }
+
+// --- Analytics ---
+
+export interface ContentAnalytics {
+  id: string;
+  contentItemId: string;
+  impressions: number;
+  reach: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  saved: number;
+  engagementRate: number;
+  fetchedAt: string;
+}
+
+export interface AnalyticsSummary {
+  totalPublished: number;
+  withAnalytics: number;
+  totals: {
+    impressions: number;
+    reach: number;
+    likes: number;
+    comments: number;
+    shares: number;
+    saved: number;
+  };
+  avgEngagementRate: number;
+  topPosts: Array<{
+    id: string;
+    topic: string;
+    type: string;
+    publishedAt: string | null;
+    engagementRate: number;
+    reach: number;
+    likes: number;
+  }>;
+}
+
+export function getAnalyticsSummary(limit = 30): Promise<AnalyticsSummary> {
+  return fetch(`${API_URL}/analytics/summary?limit=${limit}`, { cache: 'no-store' }).then((r) =>
+    handle<AnalyticsSummary>(r),
+  );
+}
+
+export function getContentAnalytics(id: string): Promise<ContentAnalytics | null> {
+  return fetch(`${API_URL}/analytics/content/${id}`, { cache: 'no-store' }).then((r) =>
+    handle<ContentAnalytics | null>(r),
+  );
+}
+
+export function refreshAnalytics(): Promise<{ total: number; success: number; failed: number }> {
+  return fetch(`${API_URL}/analytics/refresh`, { method: 'POST' }).then((r) =>
+    handle<{ total: number; success: number; failed: number }>(r),
+  );
+}
+
+// --- Ads ---
+
+export interface AdCampaign {
+  campaignId: string;
+  adsetId: string;
+  adId: string;
+  status: 'active' | 'simulated';
+  previewUrl?: string;
+}
+
+export function promoteContent(
+  contentItemId: string,
+  dailyBudgetCents: number,
+  durationDays: number,
+): Promise<{ contentItemId: string; topic: string; campaign: AdCampaign }> {
+  return fetch(`${API_URL}/ads/promote`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ contentItemId, dailyBudgetCents, durationDays }),
+  }).then((r) => handle(r));
+}

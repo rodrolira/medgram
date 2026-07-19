@@ -18,4 +18,9 @@ export class CreateContentDto {
   @IsOptional()
   @IsString()
   createdBy?: string;
+
+  /** Guión para reels generado por el pipeline IA. */
+  @IsOptional()
+  @IsString()
+  reelScript?: string;
 }

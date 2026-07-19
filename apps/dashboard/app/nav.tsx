@@ -7,6 +7,7 @@ const LINKS = [
   { href: '/', label: 'Cola' },
   { href: '/daily', label: 'Generación diaria' },
   { href: '/calendar', label: 'Calendario' },
+  { href: '/analytics', label: 'Analytics' },
 ];
 
 export function Nav() {

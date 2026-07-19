@@ -39,6 +39,7 @@ export class ContentService {
       topic,
       type,
       generatedCopy: result.fullCopy,
+      reelScript: result.reelScript,
       createdBy: createdBy ?? 'system:pipeline',
     });
 
@@ -104,7 +105,7 @@ export class ContentService {
   async create(dto: CreateContentDto) {
     return this.prisma.$transaction(async (tx) => {
       const created = await tx.contentItem.create({
-        data: { type: dto.type, topic: dto.topic, generatedCopy: dto.generatedCopy },
+        data: { type: dto.type, topic: dto.topic, generatedCopy: dto.generatedCopy, reelScript: dto.reelScript },
       });
       await tx.contentStatusLog.create({
         data: {

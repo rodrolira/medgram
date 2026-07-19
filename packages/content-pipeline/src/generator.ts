@@ -10,6 +10,8 @@ export interface GeneratedCopy {
   hashtags: string[];
   /** "claude" cuando se generó vía API; "stub" cuando no hay API key (Fase 1 sin key). */
   source: 'claude' | 'stub';
+  /** Guión para reels: escenas con tiempos. Solo presente cuando type === 'reel'. */
+  reelScript?: string;
 }
 
 const TYPE_GUIDANCE: Record<ContentType, string> = {
@@ -38,8 +40,12 @@ Instrucciones adicionales:
 - SIEMPRE incluye una frase que aclare que el contenido es informativo y no reemplaza una consulta médica.
 - Cierra con un llamado a la acción neutro (por ejemplo, "Agenda tu control").
 
-Devuelve EXCLUSIVAMENTE un objeto JSON válido, sin texto adicional ni bloques de código, con esta forma:
-{"caption": "<texto del caption>", "hashtags": ["#tag1", "#tag2"]}
+Para contenido de tipo REEL, agrega también el campo "reel_script": un guión de 30-45 segundos con escenas.
+Formato del guión: "Escena 1 (0-10s): [descripción visual]\nEscena 2 (10-25s): [acción principal]\nEscena 3 (25-40s): [dato educativo]\nCTA (40-45s): [llamado a la acción]"
+
+Devuelve EXCLUSIVAMENTE un objeto JSON válido, sin texto adicional ni bloques de código:
+- Para posts y carruseles: {"caption": "...", "hashtags": ["#tag1", "#tag2"]}
+- Para reels: {"caption": "...", "hashtags": ["#tag1", "#tag2"], "reel_script": "..."}
 Incluye entre 5 y 8 hashtags relevantes y sobrios, sin promesas.`;
 }
 
@@ -103,21 +109,21 @@ export function stubCopy(
   return { caption, hashtags, source: 'stub' };
 }
 
-function parseCopy(raw: string): { caption: string; hashtags: string[] } {
+function parseCopy(raw: string): { caption: string; hashtags: string[]; reelScript?: string } {
   const trimmed = raw
     .trim()
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/```$/, '')
     .trim();
   try {
-    const obj = JSON.parse(trimmed) as { caption?: unknown; hashtags?: unknown };
+    const obj = JSON.parse(trimmed) as { caption?: unknown; hashtags?: unknown; reel_script?: unknown };
     const caption = typeof obj.caption === 'string' ? obj.caption : raw;
     const hashtags = Array.isArray(obj.hashtags)
       ? obj.hashtags.filter((h): h is string => typeof h === 'string')
       : [];
-    return { caption, hashtags };
+    const reelScript = typeof obj.reel_script === 'string' ? obj.reel_script : undefined;
+    return { caption, hashtags, reelScript };
   } catch {
-    // Si el modelo no devolvió JSON limpio, usa el texto crudo como caption.
     return { caption: raw, hashtags: [] };
   }
 }
@@ -171,7 +177,7 @@ export async function generateCopy(
       log('[generator] respuesta vacía de Claude; usando plantilla de respaldo');
       return stubCopy(topic, type, opts.condition);
     }
-    return { ...parsed, source: 'claude' };
+    return { caption: parsed.caption, hashtags: parsed.hashtags, reelScript: parsed.reelScript, source: 'claude' };
   } catch (e) {
     // Aquí llegan errores tras agotar los reintentos del SDK, o errores no recuperables
     // (auth, request inválido, red). Degradar al stub mantiene el pipeline en pie.
