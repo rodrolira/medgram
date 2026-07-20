@@ -1,5 +1,6 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { Public } from '../auth/public.decorator';
+import { TwilioSignatureGuard } from './twilio-signature.guard';
 import { WhatsAppBookingService, WhatsAppWebhookPayload } from './whatsapp-booking.service';
 
 @Controller('whatsapp')
@@ -11,8 +12,9 @@ export class WhatsAppController {
    * Twilio sends an HTTP POST with form-encoded data; NestJS body parser converts it to JSON.
    * Returns 200 with an empty TwiML response (Twilio ignores the body since we reply via API).
    */
-  // Público al SessionGuard: se autentica por separado con la firma de Twilio (ver TwilioSignatureGuard).
+  // Exento del SessionGuard (no hay cookie): se autentica con la firma de Twilio.
   @Public()
+  @UseGuards(TwilioSignatureGuard)
   @Post('webhook')
   @HttpCode(200)
   async handleWebhook(@Body() payload: WhatsAppWebhookPayload) {
