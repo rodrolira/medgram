@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+# Cancela ejecuciones previas del mismo ref si llega un push nuevo.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Los paquetes compartidos deben compilarse antes que la API/dashboard los consuman.
+      - name: Build shared packages
+        run: npm run build:packages
+
+      # Tests unitarios de todos los workspaces (usan stubs; no requieren DB ni Redis).
+      - name: Test
+        run: npm test
+
+      # Verificación de build de producción (API + dashboard).
+      - name: Build
+        run: npm run build
+        env:
+          # El dashboard solo necesita una URL de API en build-time; no hay secretos reales.
+          NEXT_PUBLIC_API_URL: http://localhost:3001
