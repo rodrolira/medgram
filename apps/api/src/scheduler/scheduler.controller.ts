@@ -1,4 +1,5 @@
 import { Body, Controller, Post } from '@nestjs/common';
+import { Roles } from '../auth/roles.decorator';
 import { DailyContentGeneratorService } from './daily-content-generator.service';
 
 class TriggerDailyDto {
@@ -11,6 +12,7 @@ export class SchedulerController {
   constructor(private readonly generator: DailyContentGeneratorService) {}
 
   /** Trigger daily generation manually (for testing / backfill). */
+  @Roles('agency')
   @Post('trigger-daily')
   async triggerDaily(@Body() dto: TriggerDailyDto) {
     const date = dto.date ? new Date(dto.date) : new Date();

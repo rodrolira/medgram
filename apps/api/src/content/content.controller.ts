@@ -12,12 +12,14 @@ import {
 } from '@nestjs/common';
 import { ContentStatus } from '@prisma/client';
 import { CONTENT_STATUSES } from '@medgram/shared-types';
+import { Roles } from '../auth/roles.decorator';
 import { ContentService } from './content.service';
 import { CreateContentDto } from './dto/create-content.dto';
 import { GenerateContentDto } from './dto/generate-content.dto';
 import { ApproveContentDto, RejectContentDto, RequestChangesDto } from './dto/review-content.dto';
 
-// Fase 1 sin auth real: el revisor se identifica con el header x-user-email.
+// El revisor se identifica con x-user-email, que el SessionGuard sobreescribe con el email
+// verificado de la cookie de sesión. El fallback solo aplica si el guard estuviera deshabilitado.
 const DEFAULT_REVIEWER = 'doctor@medgram.local';
 
 @Controller('content')
@@ -29,11 +31,13 @@ export class ContentController {
     return this.content.create(dto);
   }
 
+  @Roles('agency')
   @Post('generate')
   generate(@Body() dto: GenerateContentDto, @Headers('x-user-email') actor?: string) {
     return this.content.generateAndQueue(dto.topic, dto.type, actor ?? dto.createdBy);
   }
 
+  @Roles('agency')
   @Post(':id/regenerate')
   regenerate(@Param('id', ParseUUIDPipe) id: string, @Headers('x-user-email') actor?: string) {
     return this.content.regenerate(id, actor);

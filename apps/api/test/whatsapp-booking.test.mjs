@@ -44,8 +44,23 @@ try {
 
 // ── Fixture factory ───────────────────────────────────────────────────────────
 
-function makeService() {
-  const svc = new WhatsAppBookingService();
+/** Stub de GoogleCalendarService: devuelve `slots` disponibles configurables. */
+function makeGcalStub(slots) {
+  return { getAvailableSlots: async () => slots };
+}
+
+/** Un par de slots futuros disponibles para el flujo de agendación. */
+function futureSlots() {
+  const base = Date.now() + 24 * 60 * 60 * 1000; // mañana
+  return [
+    { start: new Date(base).toISOString(), end: new Date(base + 3.6e6).toISOString(), available: true },
+    { start: new Date(base + 3.6e6).toISOString(), end: new Date(base + 7.2e6).toISOString(), available: true },
+  ];
+}
+
+function makeService(slots = futureSlots()) {
+  // El constructor requiere (gcal, bookingService); inyectamos stubs para el flujo de 2 turnos.
+  const svc = new WhatsAppBookingService(makeGcalStub(slots), {});
   // Replace NestJS logger with stub to inspect output
   svc['logger'] = new LoggerStub();
   return svc;
@@ -91,29 +106,22 @@ describe('WhatsAppBookingService — reply building', () => {
     delete process.env.DOCTOR_WHATSAPP_NUMBER;
   });
 
-  it('buildBookingReply includes the patient name', () => {
-    const reply = svc['buildBookingReply']('María');
-    assert.ok(reply.includes('María'), 'reply should include patient name');
+  // El flujo de 2 turnos reemplazó buildBookingReply por buildSlotMenu + showAvailableSlots.
+  it('buildSlotMenu numera las opciones de horario', () => {
+    const menu = svc['buildSlotMenu'](futureSlots(), '2026-07-21');
+    assert.ok(menu.includes('*1.*'), 'debe numerar la primera opción');
+    assert.ok(menu.includes('*2.*'), 'debe numerar la segunda opción');
   });
 
-  it('buildBookingReply includes reumatología keyword', () => {
-    const reply = svc['buildBookingReply']('Pedro');
-    assert.ok(
-      reply.toLowerCase().includes('reumatología') || reply.toLowerCase().includes('reumatologia'),
-      'reply should mention reumatología',
-    );
-  });
-
-  it('buildBookingReply includes DOCTOR_WHATSAPP_NUMBER when set', () => {
-    process.env.DOCTOR_WHATSAPP_NUMBER = '+56912345678';
-    const reply = svc['buildBookingReply']('Ana');
-    assert.ok(reply.includes('+56912345678'), 'reply should include doctor phone');
-  });
-
-  it('buildBookingReply uses fallback phone when env var not set', () => {
-    const reply = svc['buildBookingReply']('Luis');
-    assert.ok(reply.includes('(número del consultorio)') || reply.includes('+'),
-      'reply should include a phone placeholder or number');
+  it('buildSlotMenu limita a 8 opciones', () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({
+      start: new Date(Date.now() + (i + 24) * 3.6e6).toISOString(),
+      end: new Date(Date.now() + (i + 25) * 3.6e6).toISOString(),
+      available: true,
+    }));
+    const menu = svc['buildSlotMenu'](many, '2026-07-21');
+    assert.ok(menu.includes('*8.*'), 'incluye la opción 8');
+    assert.ok(!menu.includes('*9.*'), 'no debe pasar de 8 opciones');
   });
 
   it('buildDefaultReply includes patient name and instructions to write "agendar cita"', () => {
@@ -140,8 +148,8 @@ describe('WhatsAppBookingService — handleIncomingMessage (no Twilio creds)', (
     });
     assert.ok(reply.toLowerCase().includes('sofía') || reply.includes('Sof'),
       'reply should be personalized');
-    assert.ok(reply.toLowerCase().includes('agend') || reply.toLowerCase().includes('consulta'),
-      'reply should acknowledge booking intent');
+    assert.ok(reply.toLowerCase().includes('horario') || reply.toLowerCase().includes('disponible'),
+      'reply should present available slots');
   });
 
   it('returns default reply when body has no booking keyword', async () => {

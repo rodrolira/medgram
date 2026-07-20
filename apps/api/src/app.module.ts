@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { SessionGuard } from './auth/session.guard';
 import { AdsModule } from './ads/ads.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { CalendarModule } from './calendar/calendar.module';
@@ -25,5 +27,6 @@ import { WhatsAppModule } from './whatsapp/whatsapp.module';
     AdsModule,
   ],
   controllers: [HealthController],
+  providers: [{ provide: APP_GUARD, useClass: SessionGuard }],
 })
 export class AppModule {}

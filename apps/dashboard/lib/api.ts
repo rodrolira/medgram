@@ -71,6 +71,16 @@ export const RULE_LABELS: Record<string, string> = {
   REQUIRED_EDUCATIONAL_DISCLAIMER: 'Disclaimer educativo presente',
 };
 
+// Wrapper único para llamadas a la API: base URL, sin caché y `credentials: 'include'`
+// para que la cookie de sesión httpOnly viaje cross-origin (el SessionGuard la verifica).
+function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(`${API_URL}${path}`, {
+    cache: 'no-store',
+    credentials: 'include',
+    ...init,
+  });
+}
+
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => null);
@@ -85,21 +95,17 @@ async function handle<T>(res: Response): Promise<T> {
 }
 
 export function getPending(): Promise<ContentItem[]> {
-  return fetch(`${API_URL}/content/pending-approval`, { cache: 'no-store' }).then((r) =>
+  return apiFetch('/content/pending-approval').then((r) => handle<ContentItem[]>(r));
+}
+
+export function getByStatus(status: string): Promise<ContentItem[]> {
+  return apiFetch(`/content?status=${encodeURIComponent(status)}`).then((r) =>
     handle<ContentItem[]>(r),
   );
 }
 
-export function getByStatus(status: string): Promise<ContentItem[]> {
-  return fetch(`${API_URL}/content?status=${encodeURIComponent(status)}`, {
-    cache: 'no-store',
-  }).then((r) => handle<ContentItem[]>(r));
-}
-
 export function getContent(id: string): Promise<ContentItem> {
-  return fetch(`${API_URL}/content/${id}`, { cache: 'no-store' }).then((r) =>
-    handle<ContentItem>(r),
-  );
+  return apiFetch(`/content/${id}`).then((r) => handle<ContentItem>(r));
 }
 
 export type ReviewAction = 'approve' | 'reject' | 'request-changes';
@@ -110,7 +116,7 @@ export function review(
   body: Record<string, string>,
   actorEmail: string = FALLBACK_EMAIL,
 ): Promise<ContentItem> {
-  return fetch(`${API_URL}/content/${id}/${action}`, {
+  return apiFetch(`/content/${id}/${action}`, {
     method: 'PATCH',
     headers: { 'content-type': 'application/json', 'x-user-email': actorEmail },
     body: JSON.stringify(body),
@@ -132,7 +138,7 @@ export function generateContent(
   type: ContentItem['type'],
   actorEmail: string = FALLBACK_EMAIL,
 ): Promise<GenerateResult> {
-  return fetch(`${API_URL}/content/generate`, {
+  return apiFetch('/content/generate', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-user-email': actorEmail },
     body: JSON.stringify({ topic, type }),
@@ -143,7 +149,7 @@ export function regenerateContent(
   id: string,
   actorEmail: string = FALLBACK_EMAIL,
 ): Promise<GenerateResult> {
-  return fetch(`${API_URL}/content/${id}/regenerate`, {
+  return apiFetch(`/content/${id}/regenerate`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-user-email': actorEmail },
   }).then((r) => handle<GenerateResult>(r));
@@ -154,7 +160,7 @@ export function scheduleContent(
   scheduledFor: string | undefined,
   actorEmail: string = FALLBACK_EMAIL,
 ): Promise<ContentItem> {
-  return fetch(`${API_URL}/content/${id}/schedule`, {
+  return apiFetch(`/content/${id}/schedule`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-user-email': actorEmail },
     body: JSON.stringify(scheduledFor ? { scheduledFor } : {}),
@@ -177,7 +183,7 @@ export interface DailyGenerationResult {
 }
 
 export function triggerDailyGeneration(date?: string): Promise<DailyGenerationResult> {
-  return fetch(`${API_URL}/scheduler/trigger-daily`, {
+  return apiFetch('/scheduler/trigger-daily', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(date ? { date } : {}),
@@ -240,19 +246,15 @@ export interface AnalyticsSummary {
 }
 
 export function getAnalyticsSummary(limit = 30): Promise<AnalyticsSummary> {
-  return fetch(`${API_URL}/analytics/summary?limit=${limit}`, { cache: 'no-store' }).then((r) =>
-    handle<AnalyticsSummary>(r),
-  );
+  return apiFetch(`/analytics/summary?limit=${limit}`).then((r) => handle<AnalyticsSummary>(r));
 }
 
 export function getContentAnalytics(id: string): Promise<ContentAnalytics | null> {
-  return fetch(`${API_URL}/analytics/content/${id}`, { cache: 'no-store' }).then((r) =>
-    handle<ContentAnalytics | null>(r),
-  );
+  return apiFetch(`/analytics/content/${id}`).then((r) => handle<ContentAnalytics | null>(r));
 }
 
 export function refreshAnalytics(): Promise<{ total: number; success: number; failed: number }> {
-  return fetch(`${API_URL}/analytics/refresh`, { method: 'POST' }).then((r) =>
+  return apiFetch('/analytics/refresh', { method: 'POST' }).then((r) =>
     handle<{ total: number; success: number; failed: number }>(r),
   );
 }
@@ -272,7 +274,7 @@ export function promoteContent(
   dailyBudgetCents: number,
   durationDays: number,
 ): Promise<{ contentItemId: string; topic: string; campaign: AdCampaign }> {
-  return fetch(`${API_URL}/ads/promote`, {
+  return apiFetch('/ads/promote', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ contentItemId, dailyBudgetCents, durationDays }),
