@@ -1,4 +1,5 @@
 import { Body, Controller, Post } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Roles } from '../auth/roles.decorator';
 import { DailyContentGeneratorService } from './daily-content-generator.service';
 
@@ -12,6 +13,8 @@ export class SchedulerController {
   constructor(private readonly generator: DailyContentGeneratorService) {}
 
   /** Trigger daily generation manually (for testing / backfill). */
+  // Dispara 5 generaciones de IA de golpe: límite bajo.
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Roles('agency')
   @Post('trigger-daily')
   async triggerDaily(@Body() dto: TriggerDailyDto) {

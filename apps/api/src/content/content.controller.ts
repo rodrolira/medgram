@@ -10,6 +10,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ContentStatus } from '@prisma/client';
 import { CONTENT_STATUSES } from '@medgram/shared-types';
 import { Roles } from '../auth/roles.decorator';
@@ -31,6 +32,8 @@ export class ContentController {
     return this.content.create(dto);
   }
 
+  // Generación con IA: costosa (tokens + imagen). Limitar aunque sea agencia autenticada.
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @Roles('agency')
   @Post('generate')
   generate(@Body() dto: GenerateContentDto, @Headers('x-user-email') actor?: string) {
