@@ -1,50 +1,36 @@
-'use client';
+'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext } from 'react'
+import type { Role } from './auth'
 
-export type Role = 'agency' | 'doctor';
+export type { Role }
 
 export const ROLE_META: Record<Role, { label: string; email: string; initials: string }> = {
   agency: { label: 'Agencia', email: 'admin@medgram.local', initials: 'AG' },
   doctor: { label: 'Doctor', email: 'doctor@medgram.local', initials: 'DR' },
-};
-
-interface RoleContextValue {
-  role: Role;
-  email: string;
-  setRole: (r: Role) => void;
-  ready: boolean;
 }
 
-const RoleContext = createContext<RoleContextValue>({
+interface SessionContextValue {
+  role: Role
+  email: string
+}
+
+const SessionContext = createContext<SessionContextValue>({
   role: 'doctor',
-  email: ROLE_META.doctor.email,
-  setRole: () => undefined,
-  ready: false,
-});
+  email: 'doctor@medgram.local',
+})
 
-const STORAGE_KEY = 'medgram-role';
-
-export function RoleProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRoleState] = useState<Role>('doctor');
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === 'agency' || saved === 'doctor') setRoleState(saved);
-    setReady(true);
-  }, []);
-
-  const setRole = (r: Role) => {
-    localStorage.setItem(STORAGE_KEY, r);
-    setRoleState(r);
-  };
-
-  return (
-    <RoleContext.Provider value={{ role, email: ROLE_META[role].email, setRole, ready }}>
-      {children}
-    </RoleContext.Provider>
-  );
+export function SessionProvider({
+  role,
+  email,
+  children,
+}: {
+  role: Role
+  email: string
+  children: React.ReactNode
+}) {
+  return <SessionContext.Provider value={{ role, email }}>{children}</SessionContext.Provider>
 }
 
-export const useRole = () => useContext(RoleContext);
+export const useSession = () => useContext(SessionContext)
+export const useRole = useSession

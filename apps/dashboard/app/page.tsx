@@ -10,6 +10,7 @@ import {
   getByStatus,
   getPending,
 } from '@/lib/api';
+import { useSession } from '@/lib/session';
 
 const TYPE_STYLES: Record<string, string> = {
   post: 'bg-sky-100 text-sky-700',
@@ -37,6 +38,7 @@ const EMPTY_HINT: Record<string, string> = {
 };
 
 export default function QueuePage() {
+  const { role } = useSession();
   const [status, setStatus] = useState<string>('pending_approval');
   const [items, setItems] = useState<ContentItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -53,12 +55,14 @@ export default function QueuePage() {
     <div className="mx-auto max-w-3xl">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold tracking-tight">Contenido</h1>
-        <Link
-          href="/generate"
-          className="rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
-        >
-          + Generar contenido
-        </Link>
+        {role === 'agency' && (
+          <Link
+            href="/generate"
+            className="rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
+          >
+            + Generar contenido
+          </Link>
+        )}
       </div>
 
       <div className="mb-6 flex flex-wrap gap-1.5 border-b border-slate-200 pb-2">
@@ -98,7 +102,7 @@ export default function QueuePage() {
             Nada en “{STATUS_LABELS[status] ?? status}”
           </p>
           <p className="mt-1 text-sm text-slate-500">{EMPTY_HINT[status]}</p>
-          {status === 'pending_approval' && (
+          {status === 'pending_approval' && role === 'agency' && (
             <Link
               href="/generate"
               className="mt-4 inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"

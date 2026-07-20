@@ -152,7 +152,7 @@ export default function ContentDetailPage() {
 
       {!isPending && item.doctorComments && (
         <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-600">
-          Comentario del doctor: “{item.doctorComments}”
+          Comentario del doctor: "{item.doctorComments}"
         </div>
       )}
 
@@ -235,7 +235,7 @@ export default function ContentDetailPage() {
             <section className="rounded-xl border border-amber-200 bg-amber-50 p-4">
               <h2 className="mb-1 text-sm font-medium text-amber-900">Cambios solicitados</h2>
               {item.doctorComments && (
-                <p className="mb-3 text-sm text-amber-800">“{item.doctorComments}”</p>
+                <p className="mb-3 text-sm text-amber-800">"{item.doctorComments}"</p>
               )}
               {role === 'agency' ? (
                 <>
@@ -322,7 +322,7 @@ export default function ContentDetailPage() {
 
           {isPending && role === 'agency' && (
             <section className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-              En espera de la revisión del doctor. Cambia a rol “Doctor” para aprobar o rechazar.
+              Este contenido está en espera de revisión por parte del doctor.
             </section>
           )}
 
@@ -409,7 +409,7 @@ export default function ContentDetailPage() {
                       {l.fromStatus ? `${STATUS_LABELS[l.fromStatus] ?? l.fromStatus} → ` : ''}
                       <span className="font-medium">{STATUS_LABELS[l.toStatus] ?? l.toStatus}</span>
                       <span className="text-slate-500"> · {l.actor}</span>
-                      {l.reason && <span className="text-slate-500"> — “{l.reason}”</span>}
+                      {l.reason && <span className="text-slate-500"> — "{l.reason}"</span>}
                     </span>
                   </li>
                 ))}
