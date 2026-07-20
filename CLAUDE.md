@@ -1,158 +1,553 @@
-# Blueprint: Plataforma de Marketing Médico para Instagram con Aprobación del Doctor
+# Blueprint v2.0: Plataforma de Marketing Médico para Instagram con IA Generativa + WhatsApp Booking
 
-> Documento pensado para pasarle directamente a Claude Code como punto de partida del proyecto (CLAUDE.md / spec inicial). Incluye supuestos explícitos — ajústalos antes de empezar a construir.
+> Documento actualizado para incluir generación IA completa (texto + imagen + video), 5 publicaciones diarias, hashtags automáticos, especialidad reumatología, y sistema de agendación por WhatsApp.
 
-## 1. Objetivo
+## 1. Objetivo general
 
-Sistema que automatiza la creación de contenido para Instagram (posts, carruseles, reels/videos) y su publicidad para un médico general, con un **gate de aprobación obligatorio del doctor** antes de que cualquier pieza salga a producción (orgánica o pagada).
+Plataforma que:
+- Genera **5 publicaciones diarias** automáticamente (posts, carruseles, reels) sobre **reumatología**
+- Usa IA generativas (texto, imagen, video) con opciones **100% gratuitas**
+- Todas las publicaciones incluyen **hashtags médicos relevantes**
+- Gate de aprobación obligatorio del doctor antes de publicar
+- Integración con **WhatsApp** para que pacientes agenden citas directamente desde Instagram
+- Automatiza la publicación a Instagram
+- Dashboard unificado para doctor: revisar, aprobar, ver estadísticas, gestionar calendarios
 
-**Supuesto de alcance (ajustable):** se construye por fases. Fase 1 = generación + aprobación + publicación manual. Fase 2 = auto-publicación vía API. Fase 3 = gestión de anuncios. Ver sección 9.
+---
 
-## 2. Por qué el gate de aprobación no es opcional (compliance)
+## 2. Stack de IA Generativas (Opciones Gratuitas)
 
-Esto no es solo buena práctica — hay marco regulatorio real que hace que la automatización 100% sin supervisión sea una mala idea para contenido médico:
+### 2.1 Generación de Texto (Copy)
+**Opción primaria: Claude API**
+- Tu propia API key de Anthropic
+- 1.5M tokens diarios en free tier (suficiente para 5 posts diarios + copy adicional)
+- Alternativa: Groq API (más rápido, pero menos sofisticado para medical copy)
 
-- **Colegio Médico de Chile / Código de Ética:** restringe publicidad que prometa resultados, use testimonios engañosos, o genere expectativas no respaldadas clínicamente.
-- **Ley 20.584** (derechos y deberes de los pacientes): cuidado con cualquier contenido que sugiera diagnóstico a distancia o reemplace consulta médica.
-- **Políticas de Meta para salud (2026):**
-  - *Personal Attributes Policy*: prohíbe que el anuncio asuma o implique conocer una condición de salud del usuario ("¿Sufres de...?", lenguaje en segunda persona sobre síntomas).
-  - Prohibido lenguaje diagnóstico ("diagnostica", "síntomas de X", "cura", "trata") salvo con matices muy cuidadosos, y prohibidas palabras como "garantizado", "resultados instantáneos", "clínicamente probado" sin respaldo.
-  - Ampliación 2026 de la prohibición de imágenes "antes/después", incluyendo transformaciones *implícitas* (ej. mostrar a alguien luciendo saludable junto al servicio).
-  - Anuncios de salud pasan por categorización y restricciones especiales de segmentación; algunas categorías requieren certificación (LegitScript) — no aplica típicamente a un médico general, pero conviene revisarlo si se promocionan tratamientos específicos.
-  - Revisión de anuncios es mayormente automática (~24h) pero las cuentas de salud reciben escrutinio más agresivo y los rechazos/restricciones de cuenta son comunes.
+**Prompt template para Claude:**
+```python
+# pseudo-código
+prompt = f"""
+Eres un especialista en marketing médico para un doctor que trata reumatología.
+Objetivo: Crear un post de Instagram (150-200 palabras) sobre: {tema_reumatologia}
 
-**Consecuencia de diseño:** el pipeline de IA debe generar contenido con estas restricciones como reglas duras (no solo sugerencias de estilo), y el dashboard de aprobación debe mostrarle al doctor un checklist de compliance visible junto a cada pieza, no solo el contenido.
+RESTRICCIONES (OBLIGATORIAS - no violar):
+1. NO asumir condiciones de salud del lector ("¿Tienes artritis?", "sufres de")
+2. NO usar "diagnostica", "cura", "síntomas" sin contexto médico explícito
+3. NO "garantizado", "100% efectivo", "resultados instantáneos"
+4. NO "antes/después" o transformaciones visuales
+5. NO superlativas sin evidencia ("único", "mejor")
+6. SÍ usar valor educativo: tips, síntomas a vigilar, cuándo consultar
+7. Incluye: CTA suave ("Consulta con un especialista", "Agenda tu evaluación")
+8. Tono: profesional, accesible, empático
 
-## 3. Arquitectura de alto nivel
-
-```
-┌─────────────────┐     ┌──────────────────────┐     ┌─────────────────┐
-│  Generador IA    │────▶│  Cola de revisión    │────▶│  Dashboard del  │
-│  (copy, imagen,  │     │  (pending_approval)  │     │  doctor (web)   │
-│  guion video)    │     └──────────────────────┘     └────────┬────────┘
-└─────────────────┘                                            │
-        ▲                                                      ▼
-        │                                          ┌───────────────────────┐
-┌───────┴────────┐                                  │ approved / rejected / │
-│ Calendario de  │                                  │ needs_changes         │
-│ contenido       │                                 └───────────┬───────────┘
-│ (planificación) │                                             ▼
-└────────────────┘                                  ┌───────────────────────┐
-                                                     │ Programador de        │
-                                                     │ publicación           │
-                                                     └───────────┬───────────┘
-                                                                 ▼
-                                              ┌──────────────────────────────┐
-                                              │ Instagram Graph API          │
-                                              │ (Content Publishing API)     │
-                                              └──────────────────────────────┘
-                                                                 │
-                                                                 ▼
-                                              ┌──────────────────────────────┐
-                                              │ Meta Marketing API (Ads)     │
-                                              │ — solo sobre contenido       │
-                                              │   ya aprobado                │
-                                              └──────────────────────────────┘
+SALIDA REQUERIDA (JSON):
+{{
+  "copy": "[texto del post]",
+  "hashtags": ["#reumatologia", "#salud", ...],
+  "content_type": "post|carousel|reel",
+  "compliance_warnings": []
+}}
+"""
 ```
 
-## 4. Stack recomendado (consistente con tu entorno de Claude Code en Windows)
+**Temas de reumatología pre-definidos (5 diarios):**
+- Lunes: Artritis reumatoide (síntomas, tratamientos)
+- Martes: Lupus (QoL, manejo del estrés)
+- Miércoles: Osteoartritis (prevención, ejercicio)
+- Jueves: Espondilitis anquilosante (diagnóstico temprano)
+- Viernes: Consejos de bienestar reumatológico (nutrición, ejercicio)
+- (Ciclo se repite, con variaciones semana a semana)
 
-- **Frontend (dashboard de aprobación + calendario):** Next.js + TypeScript + Tailwind
-- **Backend:** NestJS (API REST + jobs)
-- **Base de datos:** PostgreSQL
-- **Cola/scheduler:** BullMQ + Redis (para publicación programada y reintentos)
-- **Almacenamiento de medios:** S3-compatible (o Cloudflare R2) para imágenes/video antes de publicar
-- **Generación de contenido IA:**
-  - Copy: Claude API
-  - Imágenes/carruseles: API de generación de imágenes (ej. vía Claude API + herramienta de imagen, o proveedor dedicado)
-  - Video/reels: esto es lo más limitado hoy — evaluar entre (a) generar guion + storyboard con IA y edición humana, o (b) proveedor de video-IA externo. No hay una solución "un clic" confiable todavía para reels médicos con buena calidad.
-- **Notificaciones al doctor:** email o WhatsApp (Twilio) cuando hay contenido pendiente de revisión
+---
 
-## 5. Modelo de datos (núcleo)
+### 2.2 Generación de Imágenes
+**Opción primaria: Hugging Face (Stable Diffusion 3.5 / FLUX.1 Schnell)**
+- Completamente gratuito via Spaces (queue/espera)
+- O descarga local gratis si tienes GPU NVIDIA
 
+**Fallback (sin GPU): Pollinations.ai**
+- Endpoint público, sin signup
+- Rate limit bajo (~1-2 req/min) pero suficiente para 5 diarias
+
+**Prompt para imagen médica (adaptado):**
 ```
-ContentItem
-  id, type (post|carousel|reel|ad_creative)
-  status: draft -> pending_approval -> (approved | rejected | needs_changes) -> scheduled -> published
-  generated_copy, generated_media[], compliance_flags[]
-  doctor_comments, approved_by, approved_at
-  scheduled_for, published_at, ig_media_id
-
-ComplianceCheck
-  content_item_id
-  rule (personal_attributes | diagnostic_language | before_after | guaranteed_results | ...)
-  passed: boolean, detail
-
-Campaign (fase 3)
-  id, objective, budget, content_item_ids[], status, meta_campaign_id
-
-User
-  role: agency_admin | doctor_approver
+Medical illustration, minimal design, professional:
+[tema: ej. "inflamación articular", "anatomía de la rodilla"]
+Estilo: infografía médica, colores: azul/blanco/gris
+Sin personas, no antes/después, educational style
 ```
 
-## 6. Flujo de aprobación (lo central del sistema)
+**Flow en el código:**
+```python
+# 1. Generar prompt de imagen con Claude
+image_prompt = generate_image_prompt(tema_reumatologia)
 
-1. El pipeline de IA genera un borrador (copy + imagen/video + hashtags) y corre un chequeo automático de compliance (reglas de la sección 2) → si falla, no llega al doctor, vuelve a generación.
-2. Lo que pasa el chequeo entra a `pending_approval` y el doctor recibe notificación.
-3. Doctor ve, en una sola pantalla: preview real de cómo se vería el post/reel, el texto, y el checklist de compliance ya resuelto (verde/rojo por regla).
-4. Doctor puede: **Aprobar**, **Rechazar** (con motivo), o **Pedir cambios** (comentario libre que vuelve a IA o a ti para editar).
-5. Solo lo aprobado entra al programador de publicación.
+# 2. Llamar Hugging Face Spaces (con reintentos)
+image_url = call_huggingface_stable_diffusion(image_prompt, max_retries=3)
 
-## 7. Publicación en Instagram (Content Publishing API) — requisitos reales 2026
+# 3. Descargar y guardar en S3
+image_local = download_image(image_url)
+upload_to_s3(image_local, content_item_id)
 
-- Cuenta de Instagram **Business** (no personal, no Creator para reels vía API) vinculada a una **Página de Facebook**.
-- App registrada en Meta for Developers + **Meta App Review** aprobado para los permisos `instagram_business_basic` e `instagram_business_content_publish` (nombres vigentes desde ene-2025; los antiguos `instagram_basic`/`instagram_content_publish` quedaron deprecados). Revisión toma ~2–4 semanas e incluye un screencast del flujo de uso.
-- Modelo de publicación: crear un *container* (`POST /{ig-user-id}/media`), esperar a que procese, luego publicar (`POST /{ig-user-id}/media_publish`).
-- Reels vía API: `media_type=REELS`, video público accesible por URL, 9:16, 5–90s, H.264/HEVC.
-- Rate limits basados en la fórmula de "Business Use Case" de Meta — no es un límite fijo simple, hay que dejar margen en el diseño de la cola.
+# 4. Integrar a ContentItem.media_urls[]
+```
 
-**Atajo de MVP:** existen capas unificadas de terceros (ej. Blotato, Zernio, Postproxy) que evitan el ciclo de revisión de Meta para publicar más rápido. Trade-off: dependencia de un tercero, costo recurrente, y hay que revisar bien sus términos de manejo de datos antes de conectarlos a la cuenta de un médico — no es un "no", pero requiere due diligence, no es plug-and-play sin revisión.
+**Herramientas del stack:**
+- Hugging Face Inference API (Spaces): `https://huggingface.co/[space-name]`
+- Alternativa: Replicate.com (50 imágenes/mes gratis, buena para fallback)
+- Alternativa sin GPU: Pollinations.ai (`https://api.pollinations.ai/v1/images`)
 
-## 8. Publicidad (Meta Marketing API) — fase 3, con más cuidado aún
+---
 
-- El contenido de anuncios de salud recibe categorización especial y escrutinio más agresivo que contenido orgánico.
-- Reglas duras a validar antes de que cualquier ad se active (independiente de la aprobación del doctor sobre el contenido clínico):
-  - Sin lenguaje que asuma condición de salud del espectador (2da persona + síntomas).
-  - Sin "antes/después" ni transformaciones implícitas.
-  - Sin "garantizado", "resultados inmediatos", "clínicamente probado" sin evidencia citable.
-  - Segmentación por edad 18+ si se toca cualquier categoría sensible (estética, salud reproductiva, etc.).
-- Recomendación: este módulo se construye al final, no en el MVP — es donde más plata y reputación se puede perder por un rechazo o restricción de cuenta.
+### 2.3 Generación de Video / Reels
 
-## 9. Fases sugeridas
+**Realidad 2026:** No hay una solución "un clic" realmente gratuita para video de calidad médica.
 
-| Fase | Alcance | Riesgo/esfuerzo |
+**Opción recomendada (híbrida):**
+
+**A) Guion + Video corto (animación simple)**
+1. Claude genera guion (30-45 segundos, máx 80 palabras)
+2. Usa una herramienta gratuita de video:
+   - **Descript** (free tier: 1 video/mes): subes texto → auto-genera video con transiciones
+   - **Runway Gen-3** (free tier: 5 min/mes): genera video desde texto
+   - **Synthesia** (free trial: 1 video) — hablador + slides
+3. Alternativa manual: crear storyboard (imágenes Stable Diffusion) + audio TTS → montaje simple
+
+**B) Open-source (si tienes GPU local)**
+- **Wan 2.2 (Alibaba)** — corre localmente, sin límites
+- **HunyuanVideo** — 8.3B params, corre en 24GB VRAM
+- **Open-Sora** — replica Sora, open-source
+- Requiere: GPU NVIDIA H100 o A100 (~4-8 horas de cómputo por video)
+
+**Para MVP (Fase 1):**
+Saltá videos. Usa **carousels** (imagen + texto) que cumplen el rol de "contenido multi-panel" sin las complejidades de video. Posts + carousels = 80% del engagement, sin headaches de generación de video.
+
+**Para Fase 2 (cuando tengas presupuesto):**
+Integra Descript o un servicio de video-IA pagado ($15-50/mes).
+
+---
+
+### 2.4 Hashtags automáticos (contexto reumatología)
+
+**Pool de hashtags médicos pre-definidos:**
+```python
+hashtags_reumatologia = {
+    "generales": [
+        "#Reumatología", "#RheumatologyMatters", "#ArthritisAwareness",
+        "#HealthCare", "#MedicalAdvice", "#SaludArticular"
+    ],
+    "por_condición": {
+        "artritis_reumatoide": [
+            "#ArthritisRheumatoid", "#RA", "#RAWarrior", "#RAAwareness"
+        ],
+        "lupus": [
+            "#LupusWarrior", "#SystemicLupus", "#LupusAwareness", "#SEL"
+        ],
+        "osteoartritis": [
+            "#Osteoarthritis", "#OAWarrior", "#JointHealth", "#OsteoarthritisAwareness"
+        ],
+        "espondilitis": [
+            "#SpinylitisAnkylosans", "#AnkylosingSpondylitis", "#SpinalHealth"
+        ]
+    },
+    "educativos": [
+        "#MédicalEducation", "#HealthTips", "#BienestarArticular",
+        "#PrevencionSalud", "#ConsejosDeS alud"
+    ],
+    "geográficos": [
+        "#Chile", "#Santiago", "#Salud_CL", "#MédicoCL"
+    ]
+}
+
+# Selección automática: 1 general + 2-3 por condición + 2 educativos + 1 geográfico = 8-10 hashtags
+```
+
+**Inserción en copy:**
+```
+[Texto del post]
+
+---
+#Reumatología #ArthritisAwareness [+ 6-8 más según tema]
+```
+
+---
+
+## 3. Generación de 5 publicaciones diarias
+
+### 3.1 Scheduler automático
+```python
+# apps/api/src/scheduler/daily-content-generator.ts
+
+import { CronJob } from 'cron';
+import { ContentGeneratorService } from './content-generator.service';
+
+// Ejecuta a las 7 AM (antes que el doctor se despierte)
+const dailyContentJob = new CronJob('0 7 * * *', async () => {
+  const temas = getTemasDiaDeHoy(); // Ej: 5 temas distintos
+
+  for (const tema of temas) {
+    try {
+      // 1. Generar texto + hashtags
+      const { copy, hashtags, content_type } =
+        await claudeAPI.generate(tema);
+
+      // 2. Generar imagen
+      const image_url = await huggingfaceAPI.generateImage(tema);
+
+      // 3. Compliance check automático
+      const checks = await complianceChecker.run(copy);
+
+      if (checks.every(c => c.passed)) {
+        // 4. Crear ContentItem
+        const item = await contentService.create({
+          type: content_type,
+          copy,
+          hashtags,
+          media_urls: [image_url],
+          status: 'pending_approval',
+          scheduled_for: getNextPublishTime(index) // Distribuir a lo largo del día
+        });
+
+        // 5. Notificar al doctor
+        await notificationService.emailDoctor(
+          `Nueva publicación pendiente: ${tema}`,
+          item.id
+        );
+      } else {
+        // Si falla compliance, reintentar con Claude (ajustar prompt)
+        console.warn(`Compliance failed for ${tema}, retrying...`);
+        // retry logic aquí
+      }
+    } catch (error) {
+      console.error(`Failed to generate content for ${tema}:`, error);
+      // Log en DB para revisión manual
+    }
+  }
+});
+
+dailyContentJob.start();
+```
+
+### 3.2 Distribución horaria
+```
+5 posts generados a las 7 AM, publicados en horarios optimizados:
+- Post 1: 9:00 AM (llegada al trabajo)
+- Post 2: 1:00 PM (almuerzo)
+- Post 3: 4:00 PM (post-trabajo)
+- Post 4: 7:00 PM (noche)
+- Post 5: 10:00 AM (día siguiente) [si doctor no aprueba antes, entra a cola]
+
+Variable: doctor puede re-agendar con 1 click
+```
+
+---
+
+## 4. Flujo de aprobación (igual que v1, pero optimizado)
+
+```
+1. Generación IA (7 AM)
+   ↓
+2. Compliance check automático (instantáneo)
+   ├─ Pasa → pending_approval
+   └─ Falla → reintentar o marcar para revisión manual
+   ↓
+3. Notificación al doctor (email + WhatsApp)
+   "5 publicaciones nuevas esperan tu aprobación"
+   ↓
+4. Dashboard: doctor ve lista de 5
+   Cada una muestra:
+   - Preview real de cómo se vería en Instagram
+   - Copy + hashtags
+   - Checklist de compliance (✓ o ✗ por regla)
+   - Botones: Aprobar | Rechazar | Editar
+   ↓
+5. Doctor aprueba (o edita)
+   ↓
+6. Publicación automática vía Instagram Graph API
+   (o manual si aún no tenés App Review de Meta)
+```
+
+---
+
+## 5. Integración WhatsApp para agendar citas
+
+### 5.1 Flujo de usuario
+```
+1. Cliente ve publicación en Instagram (post/carousel/reel)
+2. Hace clic en CTA: "Agendar consulta"
+3. Redirige a WhatsApp (enlace wa.me o botón de Meta)
+4. Conversation abierta con el número del doctor
+5. Flujo automático (Meta WhatsApp Flows):
+   - "Hola, ¿cuándo te gustaría agendar?"
+   - Cliente selecciona servicio (consulta inicial, seguimiento, etc.)
+   - Calendario de disponibilidad del doctor
+   - Cliente selecciona horario
+   - Confirmación automática
+   - Recordatorio 24h antes
+```
+
+### 5.2 Stack técnico (Twilio + Meta WhatsApp Flows)
+
+**Requisitos:**
+- Número de teléfono de WhatsApp Business (doctor)
+- Cuenta Twilio con WhatsApp Business API habilitada
+- Meta Business Manager account
+- Google Calendar sincronizado con disponibilidad del doctor
+
+**Endpoints:**
+```typescript
+// apps/api/src/whatsapp/booking.controller.ts
+
+@Post('/webhook/whatsapp')
+async handleWhatsAppMessage(@Body() payload) {
+  // Payload de Twilio
+  const { From, Body } = payload;
+
+  // Si es "agendar" → trigger WhatsApp Flow
+  if (Body.toLowerCase().includes('agendar')) {
+    await twilio.sendWhatsAppFlow({
+      to: From,
+      flowId: 'appointment_booking_flow',
+      data: {
+        doctor_name: 'Dr. [Nombre]',
+        available_slots: getAvailableSlots() // desde Google Calendar
+      }
+    });
+  }
+}
+
+@Post('/webhook/whatsapp/flow-completion')
+async handleFlowCompletion(@Body() payload) {
+  // Meta manda el resultado del flow
+  const { appointment_date, appointment_time, patient_phone } = payload;
+
+  // Guardar en DB
+  const booking = await bookingService.create({
+    doctor_id: doctor.id,
+    patient_phone,
+    scheduled_for: parseDateTime(appointment_date, appointment_time),
+    source: 'whatsapp'
+  });
+
+  // Enviar confirmación
+  await twilio.sendWhatsAppMessage({
+    to: patient_phone,
+    body: `Tu cita ha sido agendada para ${appointment_date} a las ${appointment_time}. Recibirás un recordatorio 24h antes.`
+  });
+
+  // Crear evento en Google Calendar del doctor
+  await googleCalendar.createEvent({
+    summary: `Consulta - ${patient_phone}`,
+    start: booking.scheduled_for,
+    attendees: [doctor.email]
+  });
+}
+```
+
+**Alternativa simplificada (sin Meta Flows):**
+- Link wa.me directo en cada publicación
+- Bot Twilio simple que responde preguntas frecuentes
+- Doctor gestiona agendación manualmente (o integra Calendly)
+
+---
+
+## 6. Modelo de datos (v2 actualizado)
+
+```sql
+-- ContentItem (igual que v1)
+CREATE TABLE content_items (
+  id UUID PRIMARY KEY,
+  doctor_id UUID NOT NULL,
+  type VARCHAR(20), -- 'post' | 'carousel' | 'reel'
+  copy TEXT NOT NULL,
+  hashtags TEXT[], -- array de strings
+  media_urls TEXT[], -- URLs a imágenes/videos en S3
+  status VARCHAR(30), -- 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'needs_changes' | 'scheduled' | 'published'
+  generated_by VARCHAR(20), -- 'claude_api' | 'manual'
+  doctor_comments TEXT,
+  approved_by UUID,
+  approved_at TIMESTAMP,
+  scheduled_for TIMESTAMP,
+  published_at TIMESTAMP,
+  instagram_media_id VARCHAR(255), -- del Content Publishing API
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+);
+
+-- ComplianceCheck (igual que v1)
+CREATE TABLE compliance_checks (
+  id UUID PRIMARY KEY,
+  content_item_id UUID NOT NULL REFERENCES content_items(id),
+  rule VARCHAR(100),
+  passed BOOLEAN,
+  detail TEXT,
+  created_at TIMESTAMP
+);
+
+-- NEW: Booking (para citas via WhatsApp)
+CREATE TABLE bookings (
+  id UUID PRIMARY KEY,
+  doctor_id UUID NOT NULL,
+  patient_phone VARCHAR(20),
+  patient_name VARCHAR(255),
+  scheduled_for TIMESTAMP,
+  status VARCHAR(20), -- 'confirmed' | 'cancelled' | 'completed'
+  source VARCHAR(20), -- 'whatsapp' | 'instagram' | 'web'
+  google_calendar_event_id VARCHAR(255),
+  reminder_sent BOOLEAN DEFAULT false,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+);
+
+-- NEW: DailyContentLog (tracking)
+CREATE TABLE daily_content_logs (
+  id UUID PRIMARY KEY,
+  doctor_id UUID NOT NULL,
+  date DATE,
+  total_generated INT,
+  total_approved INT,
+  total_published INT,
+  created_at TIMESTAMP
+);
+```
+
+---
+
+## 7. Restricciones de compliance (reforzadas para reumatología)
+
+```python
+compliance_rules = {
+    "NO_PERSONAL_ATTRIBUTES": {
+        "patterns": [r"\btienes\b", r"\bsufres\b", r"\bpadeced", r"\b¿tu\b", r"\btu dolor\b"],
+        "ejemplo_falla": "¿Tienes artritis? Nosotros podemos ayudarte",
+        "descripcion": "No asumir condición de salud del lector"
+    },
+    "NO_DIAGNOSTIC_LANGUAGE": {
+        "patterns": [r"\bdiagnostica", r"\bcura\b", r"\bcured", r"\bsíntomas de\b"],
+        "ejemplo_falla": "Cura tu artritis con nuestro tratamiento",
+        "descripcion": "Lenguaje diagnóstico sin contexto médico explícito"
+    },
+    "NO_GUARANTEED_CLAIMS": {
+        "patterns": [r"\bgarantizado\b", r"\b100% efectivo\b", r"\bresultados inmediatos\b"],
+        "ejemplo_falla": "Resultados garantizados en 2 semanas",
+        "descripcion": "Sin promesas de resultados"
+    },
+    "NO_BEFORE_AFTER": {
+        "patterns": [r"\bantes/después\b", r"\btransformación\b", r"\brecuperación total\b"],
+        "descripcion": "Sin comparativas visuales o de transformación"
+    },
+    "MUST_HAVE_CTA": {
+        "required": True,
+        "ejemplo": "Agenda tu consulta", "Habla con un especialista",
+        "descripcion": "Debe tener call-to-action claro pero no agresivo"
+    },
+    "MEDICAL_ACCURACY": {
+        "source": "validated_medical_database",
+        "descripcion": "Copy debe ser clínicamente exacto (basado en pool de temas validados)"
+    }
+}
+```
+
+---
+
+## 8. Stack técnico final (v2)
+
+| Componente | Tecnología | Gratuito |
 |---|---|---|
-| 1 | Generación IA + calendario + dashboard de aprobación. Publicación **manual** (el doctor o tú suben lo aprobado) | Bajo — sin depender de Meta App Review |
-| 2 | Auto-publicación vía Instagram Graph API (orgánico) | Medio — requiere App Review de Meta (2-4 semanas) |
-| 3 | Automatización de anuncios (Meta Marketing API) | Alto — mayor escrutinio de Meta, mayor impacto reputacional si falla |
+| **Generación de texto** | Claude API | Sí (1.5M tokens/día) |
+| **Generación de imágenes** | Hugging Face Spaces + Stable Diffusion 3.5 | Sí (con queue) |
+| **Generación de video** | Descript (Fase 2) o skip en MVP | Parcial (1/mes gratis, $15+/mes productivo) |
+| **Base de datos** | PostgreSQL | Sí (self-hosted) |
+| **Almacenamiento media** | S3 o Cloudflare R2 | Parcial ($0.015/GB) |
+| **Scheduler** | BullMQ + Redis | Sí |
+| **Instagram API** | Meta Content Publishing API | Sí (app review requerida) |
+| **WhatsApp** | Twilio + Meta WhatsApp Flows | Parcial ($0.005-0.015/mensaje) |
+| **Google Calendar** | Google Calendar API | Sí |
+| **Frontend (dashboard)** | Next.js 14 + Tailwind | Sí |
+| **Backend (API)** | NestJS | Sí |
+| **Hosting** | Tu VPS Windows / Docker | Depends |
 
-Empezar por la Fase 1 te da algo usable y vendible en días, no en semanas, y separa "el doctor aprueba contenido" (que es el corazón de tu propuesta de valor) de "la API de Meta coopera" (que no controlas tú).
+**Costo mensual estimado en producción (MVP):**
+- Twilio WhatsApp: ~$50-200 (según volumen de mensajes)
+- S3/R2 storage: ~$5-20
+- Hosting: $20-100 (VPS)
+- **Total: $75-320/mes**
 
-## 10. Estructura sugerida de proyecto para Claude Code
+---
 
-```
-/medgram
-  CLAUDE.md                 <- este documento, adaptado
-  /apps
-    /dashboard (Next.js)
-    /api (NestJS)
-  /packages
-    /content-pipeline        <- generación IA + compliance checks
-    /shared-types
-  /.claude
-    /skills
-      compliance-rules-medicas.md
-      instagram-content-format.md
-    /agents
-      content-generator.md
-      compliance-checker.md
-    /commands
-      nuevo-post.md
-      revisar-pendientes.md
-```
+## 9. Fases de desarrollo
 
-## 11. Riesgos a tener presentes
+### Fase 1 (MVP - 4-6 semanas)
+- Estructura + generación IA (texto + imagen)
+- Dashboard de aprobación
+- Publicación manual a Instagram (sin API)
+- Compliance checks automáticos
+- Email notifications al doctor
 
-- No prometas al doctor "publicación 100% automática" en la v1 — la dependencia de Meta App Review es real y fuera de tu control de tiempos.
-- El chequeo de compliance automático **reduce** riesgo, no lo elimina — el doctor sigue siendo responsable legal del contenido publicado en su nombre.
-- Guarda un log inmutable de quién aprobó qué y cuándo (auditoría) — importante si algo se cuestiona después.
+### Fase 1.5 (2 semanas)
+- WhatsApp agendar citas (manual del doctor, sin flows)
+- Google Calendar sync básico
+
+### Fase 2 (4 semanas, post App Review de Meta)
+- Auto-publicación a Instagram via Graph API
+- Meta WhatsApp Flows integrados
+- Recordatorios automáticos
+
+### Fase 3 (después)
+- Generación de reels (video)
+- Meta Marketing API para ads
+- Análisis de engagement
+
+---
+
+## 10. Checklist de MVP (Fase 1)
+
+- [ ] Generar 5 posts diarios automáticamente (Claude API)
+- [ ] Generar imágenes para cada post (Stable Diffusion via Hugging Face)
+- [ ] Hashtags automáticos + contexto reumatología
+- [ ] Compliance checks (7 reglas hardcoded)
+- [ ] Dashboard doctor: ver 5 pendientes, aprobar/rechazar/comentar
+- [ ] Guardar aprobaciones en DB (auditoría)
+- [ ] Email notification al doctor cuando hay nuevas publicaciones
+- [ ] Email notification cuando doctor aprueba/rechaza
+- [ ] Temas reumatología validados (5 temas base, variaciones semana a semana)
+- [ ] Test E2E: generar → compliance → approve → log
+
+**No en MVP:**
+- Publicación a Instagram (llega en Fase 2, post-App Review)
+- WhatsApp flows (Fase 1.5)
+- Video/reels
+- Ads
+
+---
+
+## 11. Riesgos y mitigaciones
+
+| Riesgo | Impacto | Mitigación |
+|---|---|---|
+| Meta App Review tarda 4-6 semanas | Alto | MVP funciona sin publicación automática (manual es suficiente) |
+| Claude API key costs | Medio | Monitorear tokens; límite suave en 1.5M/día |
+| Hugging Face queue lenta | Bajo | Fallback a Pollinations.ai o mantener 1-2 imágenes de stock |
+| Video generation es compleja | Medio | Skip en MVP; usar carousels como "featured content" |
+| Compliance false positives | Medio | Conservative rules; doctor revisa todo antes anyway |
+| WhatsApp integración requiere Twilio $$$ | Medio | Opción manual (link wa.me) en Fase 1.5 |
+
+---
+
+## 12. Instrucciones para Claude Code
+
+Cuando empieces con Claude Code:
+
+1. Copia este CLAUDE.md completo a `/medgram/CLAUDE.md`
+2. Usa TASKS.md para las tareas de Fase 1
+3. En el prompt, menciónale a Claude Code:
+   - "Eres especialista en marketing médico + compliance"
+   - "Restringe compliance a código, no sugerencias"
+   - "Temas reumatología vienen pre-validados"
+   - "5 posts diarios, distribuidos a lo largo del día"
+   - "Hashtags son automáticos, no hardcodeados"
+
+---
+
+**Última revisión:** [Tu fecha]
+**Versión:** 2.0 (Generación IA completa + WhatsApp booking)
