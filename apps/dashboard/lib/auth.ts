@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers'
+import { verifySession } from '@/lib/session-crypto'
 
 export type Role = 'doctor' | 'agency'
 
@@ -11,13 +12,5 @@ export async function getSession(): Promise<Session | null> {
   const cookieStore = await cookies()
   const cookie = cookieStore.get('medgram-session')
   if (!cookie) return null
-  try {
-    const parsed = JSON.parse(cookie.value)
-    if (parsed && typeof parsed.role === 'string' && typeof parsed.email === 'string') {
-      return parsed as Session
-    }
-    return null
-  } catch {
-    return null
-  }
+  return verifySession(cookie.value)
 }

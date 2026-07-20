@@ -19,10 +19,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
         {session ? (
           <SessionProvider role={session.role} email={session.email}>
-            <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
-              <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-                <div className="flex items-center gap-4">
-                  <Link href="/" className="text-lg font-semibold tracking-tight">
+            <header className="sticky top-0 z-10 border-b border-slate-100 bg-white/95 backdrop-blur-sm">
+              <div className="mx-auto flex h-13 max-w-6xl items-center justify-between px-6">
+                <div className="flex items-center gap-6">
+                  <Link
+                    href="/"
+                    className="text-base font-semibold tracking-tight text-slate-900"
+                  >
                     medgram
                   </Link>
                   <Nav />
@@ -30,7 +33,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <UserMenu />
               </div>
             </header>
-            <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
+            <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
           </SessionProvider>
         ) : (
           children

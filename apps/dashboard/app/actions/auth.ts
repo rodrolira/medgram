@@ -1,8 +1,10 @@
 'use server'
 
+import { timingSafeEqual, createHmac } from 'crypto'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import type { Role } from '@/lib/auth'
+import { signSession } from '@/lib/session-crypto'
 
 interface Credential {
   email: string
@@ -29,13 +31,23 @@ export async function login(_prevState: string | null, formData: FormData): Prom
   const email = String(formData.get('email') ?? '').trim().toLowerCase()
   const password = String(formData.get('password') ?? '')
 
-  const match = getCredentials().find((c) => c.email === email && c.password === password)
+  function safeEq(a: string, b: string): boolean {
+    const key = Buffer.alloc(32)
+    const ha = createHmac('sha256', key).update(a).digest()
+    const hb = createHmac('sha256', key).update(b).digest()
+    return timingSafeEqual(ha, hb)
+  }
+
+  const match = getCredentials().find(
+    (c) => safeEq(c.email, email) && safeEq(c.password, password),
+  )
   if (!match) {
     return 'Credenciales incorrectas. Verifica tu email y contraseña.'
   }
 
   const cookieStore = await cookies()
-  cookieStore.set('medgram-session', JSON.stringify({ role: match.role, email: match.email }), {
+  const signed = signSession({ role: match.role, email: match.email })
+  cookieStore.set('medgram-session', signed, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
