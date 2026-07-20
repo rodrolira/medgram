@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { maskPhone } from '../common/mask';
 import { PrismaService } from '../prisma/prisma.service';
 import { WhatsAppBookingService } from '../whatsapp/whatsapp-booking.service';
 
@@ -41,7 +42,7 @@ export class ReminderService {
           where: { id: booking.id },
           data: { reminderSent: true },
         });
-        this.logger.log(`[reminders] recordatorio enviado a ${booking.patientPhone}`);
+        this.logger.log(`[reminders] recordatorio enviado a ${maskPhone(booking.patientPhone)}`);
       } catch (e) {
         this.logger.error(`[reminders] error con booking ${booking.id}: ${(e as Error).message}`);
       }

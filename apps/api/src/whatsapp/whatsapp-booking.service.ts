@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import Twilio from 'twilio';
+import { maskPhone } from '../common/mask';
 import { GoogleCalendarService, TimeSlot } from '../calendar/google-calendar.service';
 import { BookingService } from '../calendar/booking.service';
 
@@ -55,7 +56,7 @@ export class WhatsAppBookingService {
     const body = rawBody.toLowerCase();
     const name = payload.ProfileName ?? 'Paciente';
 
-    this.logger.log(`[whatsapp] Mensaje de ${from}: "${rawBody}"`);
+    this.logger.log(`[whatsapp] Mensaje de ${maskPhone(from)}: "${rawBody}"`);
 
     // Limpiar sesiones expiradas
     this.purgeSessions();
