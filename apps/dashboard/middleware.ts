@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const AGENCY_ONLY = ['/daily', '/generate']
 
-function hexToBytes(hex: string): Uint8Array<ArrayBuffer> {
+// Middleware runs in the Edge runtime, which does not support Node.js `crypto`.
+// The HMAC verification below re-implements the logic from lib/session-crypto.ts
+// using the Web Crypto API (crypto.subtle), which is available in the Edge runtime.
+export function hexToBytes(hex: string): Uint8Array<ArrayBuffer> {
   const buf = new ArrayBuffer(hex.length / 2)
   const bytes = new Uint8Array(buf)
   for (let i = 0; i < hex.length; i += 2) {
@@ -11,7 +14,7 @@ function hexToBytes(hex: string): Uint8Array<ArrayBuffer> {
   return bytes
 }
 
-function base64urlDecode(b64url: string): Uint8Array {
+export function base64urlDecode(b64url: string): Uint8Array {
   const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/')
   return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
 }
@@ -47,34 +50,21 @@ export async function middleware(request: NextRequest) {
   const session = request.cookies.get('medgram-session')
   const { pathname } = request.nextUrl
 
-  if (!session && pathname !== '/login') {
+  const to = (path: string, deleteCookie = false) => {
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+    url.pathname = path
+    const res = NextResponse.redirect(url)
+    if (deleteCookie) res.cookies.delete('medgram-session')
+    return res
   }
 
-  if (session && pathname === '/login') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/'
-    return NextResponse.redirect(url)
-  }
+  if (!session && pathname !== '/login') return to('/login')
+  if (session && pathname === '/login') return to('/')
 
   if (session) {
     const role = await extractRole(session.value)
-
-    if (role === null) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      const res = NextResponse.redirect(url)
-      res.cookies.delete('medgram-session')
-      return res
-    }
-
-    if (role === 'doctor' && AGENCY_ONLY.some((p) => pathname.startsWith(p))) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/'
-      return NextResponse.redirect(url)
-    }
+    if (role === null) return to('/login', true)
+    if (role === 'doctor' && AGENCY_ONLY.some((p) => pathname.startsWith(p))) return to('/')
   }
 
   return NextResponse.next()

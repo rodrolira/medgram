@@ -1,6 +1,5 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
-// Fase 1 sin auth real: el actor se identifica con el header x-user-email según el rol elegido.
 const FALLBACK_EMAIL = 'doctor@medgram.local';
 
 export interface ComplianceCheck {

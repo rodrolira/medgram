@@ -12,34 +12,32 @@ interface Credential {
   role: Role
 }
 
-function getCredentials(): Credential[] {
-  return [
-    {
-      email: process.env.DOCTOR_EMAIL ?? 'doctor@medgram.local',
-      password: process.env.DOCTOR_PASSWORD ?? 'Doctor2024',
-      role: 'doctor',
-    },
-    {
-      email: process.env.AGENCY_EMAIL ?? 'admin@medgram.local',
-      password: process.env.AGENCY_PASSWORD ?? 'Agency2024',
-      role: 'agency',
-    },
-  ]
+const CREDENTIALS: Credential[] = [
+  {
+    email: process.env.DOCTOR_EMAIL ?? 'doctor@medgram.local',
+    password: process.env.DOCTOR_PASSWORD ?? 'Doctor2024',
+    role: 'doctor',
+  },
+  {
+    email: process.env.AGENCY_EMAIL ?? 'admin@medgram.local',
+    password: process.env.AGENCY_PASSWORD ?? 'Agency2024',
+    role: 'agency',
+  },
+]
+
+function timingSafeCompare(a: string, b: string): boolean {
+  const key = Buffer.alloc(32)
+  const ha = createHmac('sha256', key).update(a).digest()
+  const hb = createHmac('sha256', key).update(b).digest()
+  return timingSafeEqual(ha, hb)
 }
 
 export async function login(_prevState: string | null, formData: FormData): Promise<string | null> {
   const email = String(formData.get('email') ?? '').trim().toLowerCase()
   const password = String(formData.get('password') ?? '')
 
-  function safeEq(a: string, b: string): boolean {
-    const key = Buffer.alloc(32)
-    const ha = createHmac('sha256', key).update(a).digest()
-    const hb = createHmac('sha256', key).update(b).digest()
-    return timingSafeEqual(ha, hb)
-  }
-
-  const match = getCredentials().find(
-    (c) => safeEq(c.email, email) && safeEq(c.password, password),
+  const match = CREDENTIALS.find(
+    (c) => timingSafeCompare(c.email, email) && timingSafeCompare(c.password, password),
   )
   if (!match) {
     return 'Credenciales incorrectas. Verifica tu email y contraseña.'

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ContentItem, TYPE_LABELS, generateContent } from '@/lib/api';
-import { useRole } from '@/lib/session';
+import { useSession } from '@/lib/session';
 
 const TYPES: ContentItem['type'][] = ['post', 'carousel', 'reel', 'ad_creative'];
 
@@ -18,7 +18,7 @@ const SUGGESTIONS = [
 
 export default function GeneratePage() {
   const router = useRouter();
-  const { email } = useRole();
+  const { email } = useSession();
   const [topic, setTopic] = useState('');
   const [type, setType] = useState<ContentItem['type']>('post');
   const [busy, setBusy] = useState(false);

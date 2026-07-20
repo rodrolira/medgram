@@ -15,7 +15,7 @@ import {
   review,
   scheduleContent,
 } from '@/lib/api';
-import { useRole } from '@/lib/session';
+import { useSession } from '@/lib/session';
 
 type ActionMode = 'reject' | 'request-changes' | null;
 
@@ -24,7 +24,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export default function ContentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { role, email } = useRole();
+  const { role, email } = useSession();
 
   const [item, setItem] = useState<ContentItem | null>(null);
   const [error, setError] = useState<string | null>(null);

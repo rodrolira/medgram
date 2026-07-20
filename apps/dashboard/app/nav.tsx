@@ -24,20 +24,20 @@ export function Nav() {
 
   return (
     <nav className="flex items-center gap-1">
-      {links.map((l) => {
+      {links.map((link) => {
         const active =
-          l.href === '/'
+          link.href === '/'
             ? path === '/' || path.startsWith('/content') || path.startsWith('/generate')
-            : path.startsWith(l.href)
+            : path.startsWith(link.href)
         return (
           <Link
-            key={l.href}
-            href={l.href}
+            key={link.href}
+            href={link.href}
             className={`rounded-md px-2.5 py-1 text-sm transition ${
               active ? 'font-medium text-slate-900' : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            {l.label}
+            {link.label}
           </Link>
         )
       })}

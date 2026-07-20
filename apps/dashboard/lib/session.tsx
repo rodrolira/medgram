@@ -3,11 +3,9 @@
 import { createContext, useContext } from 'react'
 import type { Role } from './auth'
 
-export type { Role }
-
-export const ROLE_META: Record<Role, { label: string; email: string; initials: string }> = {
-  agency: { label: 'Agencia', email: 'admin@medgram.local', initials: 'AG' },
-  doctor: { label: 'Doctor', email: 'doctor@medgram.local', initials: 'DR' },
+export const ROLE_META: Record<Role, { label: string; initials: string }> = {
+  agency: { label: 'Agencia', initials: 'AG' },
+  doctor: { label: 'Doctor', initials: 'DR' },
 }
 
 interface SessionContextValue {
@@ -33,4 +31,3 @@ export function SessionProvider({
 }
 
 export const useSession = () => useContext(SessionContext)
-export const useRole = useSession
