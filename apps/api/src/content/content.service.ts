@@ -294,15 +294,38 @@ export class ContentService {
   }
 
   /** Deja rastro de un fallo de publicación sin cambiar el estado (la cola reintenta). */
-  async markPublishFailed(id: string, reason: string) {
+  /**
+   * Registra un fallo de publicación.
+   * - `final=false` (intento intermedio): solo deja rastro en la auditoría; el ítem sigue
+   *   `scheduled` para que BullMQ reintente.
+   * - `final=true` (reintentos agotados): revierte `scheduled -> approved` para que el ítem
+   *   quede visible y re-agendable, en vez de atascado en `scheduled` para siempre.
+   */
+  async markPublishFailed(id: string, reason: string, final = false) {
     const item = await this.findOne(id);
+
+    if (final && item.status === 'scheduled') {
+      await this.prisma.$transaction((tx) =>
+        this.logTransition(
+          tx,
+          item,
+          'approved',
+          'system:publisher',
+          null,
+          `Publicación fallida tras agotar reintentos: ${reason}. Vuelve a "aprobado" para re-agendar.`,
+          { scheduledFor: null },
+        ),
+      );
+      return;
+    }
+
     await this.prisma.contentStatusLog.create({
       data: {
         contentItemId: id,
         fromStatus: item.status,
         toStatus: item.status,
         actor: 'system:publisher',
-        reason: `Fallo de publicación: ${reason}`,
+        reason: `Fallo de publicación (reintentará): ${reason}`,
       },
     });
   }

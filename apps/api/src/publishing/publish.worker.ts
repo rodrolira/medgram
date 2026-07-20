@@ -27,8 +27,29 @@ export class PublishWorker implements OnModuleInit, OnModuleDestroy {
       { connection: this.connection },
     );
     this.worker.on('failed', (job, err) => {
-      this.logger.error(`job ${job?.id} falló: ${err.message}`);
+      void this.onJobFailed(job, err);
     });
+  }
+
+  /**
+   * Se dispara tras cada intento fallido. Registra el fallo y, solo cuando se agotan todos los
+   * reintentos, marca el ítem como fallo definitivo (lo revierte a "aprobado" para re-agendar).
+   */
+  private async onJobFailed(job: Job<PublishJobData> | undefined, err: Error) {
+    if (!job) {
+      this.logger.error(`job desconocido falló: ${err.message}`);
+      return;
+    }
+    const maxAttempts = job.opts.attempts ?? 1;
+    const isFinal = job.attemptsMade >= maxAttempts;
+    this.logger.error(
+      `job ${job.id} falló (intento ${job.attemptsMade}/${maxAttempts}): ${err.message}`,
+    );
+    try {
+      await this.content.markPublishFailed(job.data.contentItemId, err.message, isFinal);
+    } catch (markErr) {
+      this.logger.error(`no se pudo registrar el fallo de ${job.data.contentItemId}: ${(markErr as Error).message}`);
+    }
   }
 
   private async process(contentItemId: string) {
@@ -38,18 +59,14 @@ export class PublishWorker implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(`${contentItemId} no está scheduled (${item.status}); se omite`);
       return;
     }
-    try {
-      const { igMediaId } = await this.publisher.publish({
-        id: item.id,
-        type: item.type,
-        copy: item.generatedCopy ?? '',
-      });
-      await this.content.markPublished(contentItemId, igMediaId);
-    } catch (e) {
-      const reason = (e as Error).message;
-      await this.content.markPublishFailed(contentItemId, reason);
-      throw e; // deja que BullMQ reintente según la política de la cola
-    }
+    const { igMediaId } = await this.publisher.publish({
+      id: item.id,
+      type: item.type,
+      copy: item.generatedCopy ?? '',
+    });
+    await this.content.markPublished(contentItemId, igMediaId);
+    // Si publish() lanza, el error se propaga: BullMQ reintenta y el evento 'failed'
+    // registra el fallo (definitivo solo al agotar los reintentos).
   }
 
   async onModuleDestroy() {
